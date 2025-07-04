@@ -1,6 +1,6 @@
-# WordRegex
+# Word Finders
 
-A web application for searching and filtering words using regex and keyboard constraints, inspired by games like Wordle.
+A web application for searching and filtering words using regex and keyboard constraints, inspired by games like Wordle and decipher.
 
 ## Project Structure
 
@@ -26,6 +26,3 @@ Open `frontend/index.html` in your browser. The frontend expects the backend to 
 
 ## Requirements
 See `backend/requirements.txt` for Python dependencies.
-
-## License
-MIT
