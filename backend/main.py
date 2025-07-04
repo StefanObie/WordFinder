@@ -1,13 +1,14 @@
 import re
 import os
 import nltk
+nltk.data.path = [os.path.join(os.getcwd(), 'nltk_data'), '/opt/render/nltk_data'] + nltk.data.path
+
 from nltk.corpus import words
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS # Ensure flask_cors is in your requirements.txt
 
 # Load all English words (lowercase, deduplicated)
 # NLTK's 'words' corpus needs to be downloaded the first time.
-nltk.data.path.append('/opt/render/nltk_data')
 try:
     word_list = sorted(set(w.lower() for w in words.words() if w.isalpha()))
 except LookupError:
