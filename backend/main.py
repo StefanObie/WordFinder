@@ -1,10 +1,20 @@
 import re
 import os
 import nltk
-# nltk.data.path = [os.path.join(os.getcwd(), 'nltk_data'), '/opt/render/nltk_data'] + nltk.data.path
-nltk.data.path.insert(0, '/opt/render/nltk_data')
 
-from nltk.corpus import words
+# Use a local nltk_data directory inside your project
+NLTK_DATA_DIR = os.path.join(os.path.dirname(__file__), 'nltk_data')
+os.makedirs(NLTK_DATA_DIR, exist_ok=True)
+nltk.data.path.insert(0, NLTK_DATA_DIR)
+
+# Download 'words' at runtime if not present
+try:
+    from nltk.corpus import words
+    _ = words.words()
+except LookupError:
+    nltk.download('words', download_dir=NLTK_DATA_DIR)
+    from nltk.corpus import words
+
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS # Ensure flask_cors is in your requirements.txt
 
