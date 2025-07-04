@@ -1,4 +1,4 @@
-BACKEND_URL = 'http://localhost:5000';
+BACKEND_URL = 'https://wordfinder-nno8.onrender.com';
 
 // Fetch total word count from backend
 async function getStats() {
