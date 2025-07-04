@@ -74,13 +74,10 @@ function clearSearch() {
     // Clear letter boxes
     const boxes = document.querySelectorAll('#letterBoxes input');
     boxes.forEach(box => box.value = '');
-    // Reset keyboard state
-    Object.keys(keyStates).forEach(l => keyStates[l] = 'neutral');
+    // Do not reset keyboard state here!
     renderKeyboard();
-    // Reset matches and stats
-    currentMatches = [];
     renderLetterBoxes();
-    init();
+    searchWords();
 }
 
 function displayWords(words, totalMatches) {
@@ -239,7 +236,8 @@ document.getElementById('lengthFilter').addEventListener('input', function() {
     // Prevent more than 15
     let val = parseInt(this.value);
     if (val > 15) this.value = 15;
-    clearSearch();
+    renderLetterBoxes();
+    searchWords();
 });
 
 // Attach clear button event

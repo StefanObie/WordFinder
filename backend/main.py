@@ -9,21 +9,28 @@ nltk.data.path.insert(0, NLTK_DATA_DIR)
 
 # Download 'words' at runtime if not present
 try:
-    from nltk.corpus import words
+    from nltk.corpus import words, brown
     _ = words.words()
+    _ = brown.words()
 except LookupError:
     nltk.download('words', download_dir=NLTK_DATA_DIR)
-    from nltk.corpus import words
+    nltk.download('brown', download_dir=NLTK_DATA_DIR)
+    from nltk.corpus import words, brown
 
-from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS # Ensure flask_cors is in your requirements.txt
+# Build frequency distribution from Brown corpus
+from collections import Counter
+brown_freq = Counter(w.lower() for w in brown.words() if w.isalpha())
 
-# Load all English words (lowercase, deduplicated)
-# NLTK's 'words' corpus needs to be downloaded the first time.
+# Load all English words (lowercase, deduplicated), sorted by frequency
 try:
-    word_list = sorted(set(w.lower() for w in words.words() if w.isalpha()))
+    all_words = set(w.lower() for w in words.words() if w.isalpha())
+    # Sort by frequency (most common first), then alphabetically
+    word_list = sorted(
+        all_words,
+        key=lambda w: (-brown_freq[w], w)
+    )
 except LookupError:
-    print("NLTK 'words' corpus not found. Please download it: `import nltk; nltk.download('words')`")
+    print("NLTK 'words' or 'brown' corpus not found. Please download them.")
     word_list = [] # Fallback to empty list if not found.
 
 LOAD_LIMIT = 150
