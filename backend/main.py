@@ -1,20 +1,20 @@
 import re
 import os
+import nltk
 from nltk.corpus import words
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS # Ensure flask_cors is in your requirements.txt
 
 # Load all English words (lowercase, deduplicated)
 # NLTK's 'words' corpus needs to be downloaded the first time.
-# You might need to add a pre-build step on Render to download it, or ensure it's available.
-# For local testing, run: import nltk; nltk.download('words')
+nltk.data.path.append('/opt/render/nltk_data')
 try:
     word_list = sorted(set(w.lower() for w in words.words() if w.isalpha()))
 except LookupError:
     print("NLTK 'words' corpus not found. Please download it: `import nltk; nltk.download('words')`")
     word_list = [] # Fallback to empty list if not found.
 
-LOAD_LIMIT = 150 # Renamed from previous LOAD_LIMIT to be consistent with the usage
+LOAD_LIMIT = 150
 
 def search_words(pattern=None, length=None, allowed=None, disallowed=None):
     """
