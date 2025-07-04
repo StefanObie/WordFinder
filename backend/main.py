@@ -33,6 +33,9 @@ except LookupError:
     print("NLTK 'words' or 'brown' corpus not found. Please download them.")
     word_list = [] # Fallback to empty list if not found.
 
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
+
 LOAD_LIMIT = 150
 
 def search_words(pattern=None, length=None, allowed=None, disallowed=None):
