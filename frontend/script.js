@@ -74,10 +74,13 @@ function clearSearch() {
     // Clear letter boxes
     const boxes = document.querySelectorAll('#letterBoxes input');
     boxes.forEach(box => box.value = '');
-    // Do not reset keyboard state here!
+    // Reset keyboard state
+    Object.keys(keyStates).forEach(l => keyStates[l] = 'neutral');
     renderKeyboard();
+    // Reset matches and stats
+    currentMatches = [];
     renderLetterBoxes();
-    searchWords();
+    init();
 }
 
 function displayWords(words, totalMatches) {
