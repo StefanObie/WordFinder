@@ -1,7 +1,8 @@
 import re
 import os
 import nltk
-nltk.data.path = [os.path.join(os.getcwd(), 'nltk_data'), '/opt/render/nltk_data'] + nltk.data.path
+# nltk.data.path = [os.path.join(os.getcwd(), 'nltk_data'), '/opt/render/nltk_data'] + nltk.data.path
+nltk.data.path.insert(0, '/opt/render/nltk_data')
 
 from nltk.corpus import words
 from flask import Flask, render_template, request, jsonify
