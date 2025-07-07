@@ -233,6 +233,7 @@ button:hover {
     margin-top: 0;
 }
 
+/* Responsive tweaks for keyboard and legend on mobile */
 @media (max-width: 600px) {
     #lengthFilter {
         min-width: auto;
@@ -249,5 +250,62 @@ button:hover {
         width: 28px;
         font-size: 16px;
         margin: 0 2px;
+    }
+    #keyboard {
+        margin-bottom: 10px;
+    }
+    .keyboard-row {
+        gap: 2px;
+        margin-bottom: 2px;
+    }
+    .keyboard-key {
+        width: 22px;
+        height: 26px;
+        font-size: 13px;
+        border-radius: 3px;
+        padding: 0;
+    }
+    #keyboard-legend {
+        gap: 6px !important;
+        margin-bottom: 6px !important;
+        flex-wrap: wrap;
+    }
+    #keyboard-legend span.keyboard-key {
+        width: 18px !important;
+        height: 18px !important;
+        font-size: 11px !important;
+        border-radius: 2px !important;
+        padding: 0 !important;
+    }
+    #keyboard-legend span {
+        font-size: 11px !important;
+    }
+    .letter-box {
+        width: 22px;
+        height: 28px;
+        font-size: 13px;
+        margin: 0 1px;
+    }
+}
+
+/* Make letterBoxes wrap to two lines if too long */
+#letterBoxes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+    max-width: 100%;
+}
+
+.letter-box {
+    box-sizing: border-box;
+    margin: 0 2px 4px 2px;
+    /* width/height/font-size can be adjusted as needed */
+}
+
+/* For long words, force wrap after half the letters */
+@media (min-width: 400px) {
+    #letterBoxes {
+        max-width: 320px;
     }
 }
