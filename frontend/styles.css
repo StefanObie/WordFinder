@@ -3,7 +3,6 @@ body {
     background: #f4f4f4;
     min-height: 100vh;
     padding: 20px;
-    
 }
 
 .container {
@@ -196,7 +195,7 @@ button:hover {
 
 #letterBoxes {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
     gap: 8px 2px;
@@ -213,66 +212,75 @@ button:hover {
     height: 38px;
     font-size: 18px;
     text-align: center;
-    border: 1.5px solid #bbb;
-    border-radius: 4px;
-    background: #f8fafc;
+    border: none;
+    border-bottom: 2.5px solid #1e293b;
+    border-radius: 0;
+    background: transparent;
     color: #1e293b;
-    transition: border 0.2s;
+    transition: border-bottom 0.2s;
+    outline: none;
 }
 
-/* Responsive tweaks for keyboard, legend, and letter boxes on mobile */
+.letter-box:focus {
+    border-bottom: 2.5px solid #1e40af;
+    background: #e0e7ef;
+}
+
+.letter-box.filled {
+    background: #4caf50;
+    color: #fff;
+    border-bottom: 2.5px solid #22c55e;
+}
+
+.keyboard-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 12px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legend-label {
+    font-size: 14px;
+    color: #555;
+}
+
+.legend-key {
+    pointer-events: none;
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 2px;
+}
+
+/* Only keep truly mobile-specific overrides here */
 @media (max-width: 600px) {
     #lengthFilter {
         min-width: auto;
         width: 50px;
         font-size: 15px;
     }
-    .word-grid {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    }
-    .word-item {
-        min-width: 80px;
-        font-size: 0.95em;
-        padding: 5px 2px;
-    }
-    #letterBoxes {
-        gap: 2px 1px;
-        max-width: 220px;
-        flex-wrap: wrap;
-    }
-    .letter-box {
-        width: 22px;
-        height: 28px;
-        font-size: 13px;
-        margin: 0 1px 3px 1px;
-    }
-    #keyboard {
-        margin-bottom: 10px;
-    }
-    .keyboard-row {
-        gap: 2px;
-        margin-bottom: 2px;
-    }
+
     .keyboard-key {
-        width: 22px;
-        height: 26px;
-        font-size: 13px;
-        border-radius: 3px;
-        padding: 0;
-    }
-    #keyboard-legend {
-        gap: 6px !important;
-        margin-bottom: 6px !important;
-        flex-wrap: wrap;
-    }
-    #keyboard-legend span.keyboard-key {
-        width: 18px !important;
-        height: 18px !important;
-        font-size: 11px !important;
-        border-radius: 2px !important;
-        padding: 0 !important;
-    }
-    #keyboard-legend span {
-        font-size: 11px !important;
+        width: 26px;
+        height: 30px;
+        font-size: 14px;
+    }   
+}
+
+@media (max-width: 400px) {
+    .keyboard-key {
+        width: 20px;
+        height: 24px;
+        font-size: 11px;
     }
 }

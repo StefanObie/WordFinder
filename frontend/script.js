@@ -197,6 +197,12 @@ function renderLetterBoxes() {
                     keyStates[val] = 'inline';
                     renderKeyboard();
                 }
+                // Move to next input if exists and current input is filled
+                const boxes = document.querySelectorAll('#letterBoxes input');
+                const idx = Array.from(boxes).indexOf(input);
+                if (idx < boxes.length - 1) {
+                    boxes[idx + 1].focus();
+                }
             } else {
                 input.classList.remove('filled');
                 // If the letter was removed, check if it still exists in any other box
@@ -211,6 +217,17 @@ function renderLetterBoxes() {
                 renderKeyboard();
             }
             searchWords();
+        };
+        input.onkeydown = function(e) {
+            if (e.key === "Backspace" && !input.value) {
+                const boxes = document.querySelectorAll('#letterBoxes input');
+                const idx = Array.from(boxes).indexOf(input);
+                if (idx > 0) {
+                    boxes[idx - 1].focus();
+                    // Optionally, clear previous box if you want:
+                    // boxes[idx - 1].value = '';
+                }
+            }
         };
         // If already filled (e.g., after rerender), keep class
         if (input.value && input.value.trim()) {

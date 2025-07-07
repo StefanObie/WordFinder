@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Word Finder</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
+
 <body>
     <div class="container">
         <div class="length-row">
@@ -15,22 +17,22 @@
         </div>
         <div id="letterBoxes"></div>
         <div id="keyboard"></div>
-        <div id="keyboard-legend" style="display: flex; justify-content: center; gap: 18px; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <span class="keyboard-key inline" style="pointer-events: none; width: 28px; height: 28px; font-size: 15px; background: #4caf50; color: #fff;">A</span>
-                <span style="font-size: 14px; color: #555;">Correct</span>
+        <div id="keyboard-legend" class="keyboard-legend">
+            <div class="legend-item">
+                <span class="keyboard-key inline legend-key">A</span>
+                <span class="legend-label">Correct</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <span class="keyboard-key allowed" style="pointer-events: none; width: 28px; height: 28px; font-size: 15px;">A</span>
-                <span style="font-size: 14px; color: #555;">Allowed</span>
+            <div class="legend-item">
+                <span class="keyboard-key allowed legend-key">A</span>
+                <span class="legend-label">Allowed</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <span class="keyboard-key disallowed" style="pointer-events: none; width: 28px; height: 28px; font-size: 15px;">A</span>
-                <span style="font-size: 14px; color: #555;">Not Allowed</span>
+            <div class="legend-item">
+                <span class="keyboard-key disallowed legend-key">A</span>
+                <span class="legend-label">Not Allowed</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <span class="keyboard-key neutral" style="pointer-events: none; width: 28px; height: 28px; font-size: 15px;">A</span>
-                <span style="font-size: 14px; color: #555;">Neutral</span>
+            <div class="legend-item">
+                <span class="keyboard-key neutral legend-key">A</span>
+                <span class="legend-label">Neutral</span>
             </div>
         </div>
         <div class="stats">
@@ -41,4 +43,5 @@
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
+
 </html>
