@@ -196,60 +196,55 @@ button:hover {
 
 #letterBoxes {
     display: flex;
-    gap: 8px;
-    align-items: center;
+    flex-wrap: nowrap;
     justify-content: center;
+    align-items: center;
+    gap: 8px 2px;
+    width: 100%;
     margin-bottom: 18px;
     margin-top: 0;
+    max-width: none;
 }
 
 .letter-box {
-    width: 52px;
-    height: 44px;
-    font-size: 22px;
-    text-align: center;
-    border: none;
-    border-bottom: 2.5px solid #bbb;
-    background: none;
-    margin: 0 4px;
-    border-radius: 0;
-    outline: none;
-    transition: border-bottom 0.2s;
     box-sizing: border-box;
-}
-.letter-box:focus {
-    border-bottom: 2.5px solid #1e40af;
-}
-
-.letter-box.filled {
-    background: #bbf7d0;
-    border-bottom: 2.5px solid #22c55e;
-    color: #166534;
-    font-weight: bold;
-    transition: background 0.2s, border-bottom 0.2s, color 0.2s;
-}
-
-#wordList {
-    margin-top: 0;
+    margin: 0 2px 4px 2px;
+    width: 34px;
+    height: 38px;
+    font-size: 18px;
+    text-align: center;
+    border: 1.5px solid #bbb;
+    border-radius: 4px;
+    background: #f8fafc;
+    color: #1e293b;
+    transition: border 0.2s;
 }
 
-/* Responsive tweaks for keyboard and legend on mobile */
+/* Responsive tweaks for keyboard, legend, and letter boxes on mobile */
 @media (max-width: 600px) {
     #lengthFilter {
         min-width: auto;
+        width: 50px;
+        font-size: 15px;
     }
     .word-grid {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     }
     .word-item {
-        min-width: 100px;
-        font-size: 1em;
-        padding: 6px 4px;
+        min-width: 80px;
+        font-size: 0.95em;
+        padding: 5px 2px;
+    }
+    #letterBoxes {
+        gap: 2px 1px;
+        max-width: 220px;
+        flex-wrap: wrap;
     }
     .letter-box {
-        width: 28px;
-        font-size: 16px;
-        margin: 0 2px;
+        width: 22px;
+        height: 28px;
+        font-size: 13px;
+        margin: 0 1px 3px 1px;
     }
     #keyboard {
         margin-bottom: 10px;
@@ -279,33 +274,5 @@ button:hover {
     }
     #keyboard-legend span {
         font-size: 11px !important;
-    }
-    .letter-box {
-        width: 22px;
-        height: 28px;
-        font-size: 13px;
-        margin: 0 1px;
-    }
-}
-
-/* Make letterBoxes wrap to two lines if too long */
-#letterBoxes {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 2px;
-    max-width: 100%;
-}
-
-.letter-box {
-    box-sizing: border-box;
-    margin: 0 2px 4px 2px;
-    /* width/height/font-size can be adjusted as needed */
-}
-
-/* For long words, force wrap after half the letters */
-@media (min-width: 400px) {
-    #letterBoxes {
-        max-width: 320px;
     }
 }
