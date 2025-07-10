@@ -6,10 +6,10 @@ The application is [hosted](https://wordfinder-nno8.onrender.com) on [Render](ht
 
 ## Project Structure
 
-- `backend/` — Python backend (Flask API)
-- `frontend/` — Frontend static files (HTML, CSS, JS)
+- `backend/` - Python Backend (Flask API)
+- `frontend/` - Static Frontend Files (HTML, CSS, JS)
 
-## Getting Started
+<!-- ## Getting Started
 
 ### Backend
 
@@ -27,4 +27,4 @@ The application is [hosted](https://wordfinder-nno8.onrender.com) on [Render](ht
 Open `frontend/index.html` in your browser. The frontend expects the backend to be running at `http://localhost:5000`.
 
 ## Requirements
-See `backend/requirements.txt` for Python dependencies.
+See `backend/requirements.txt` for Python dependencies. -->

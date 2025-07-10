@@ -256,7 +256,14 @@ document.getElementById('lengthFilter').addEventListener('input', function() {
     // Prevent more than 15
     let val = parseInt(this.value);
     if (val > 15) this.value = 15;
+
+    // Reset all 'inline' key states to 'neutral' when length changes
+    Object.keys(keyStates).forEach(l => {
+        if (keyStates[l] === 'inline') keyStates[l] = 'neutral';
+    });
+
     renderLetterBoxes();
+    renderKeyboard(); // Ensure keyboard updates immediately
     searchWords();
 });
 
