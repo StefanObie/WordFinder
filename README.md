@@ -6,8 +6,13 @@ The application is [hosted](https://wordfinder-nno8.onrender.com) on [Render](ht
 
 ## Project Structure
 
-- `backend/` - Python Backend (Flask API)
-- `frontend/` - Static Frontend Files (HTML, CSS, JS)
+### Python Backend
+- Flask API
+- [List of words](https://github.com/seanpatlan/wordle-words.git) that Wordle selects the daily word.
+- NLTK word list, sorted by rarity.
+
+### Static Frontend Files 
+- HTML, CSS, JS
 
 <!-- ## Getting Started
 

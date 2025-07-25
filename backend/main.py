@@ -1,6 +1,7 @@
 import re
 import os
 import nltk
+import csv
 
 # Use a local nltk_data directory inside your project
 NLTK_DATA_DIR = os.path.join(os.path.dirname(__file__), 'nltk_data')
@@ -21,17 +22,36 @@ except LookupError:
 from collections import Counter
 brown_freq = Counter(w.lower() for w in brown.words() if w.isalpha())
 
+# Load priority words from CSV (Wordle word bank)
+priority_words = []
+csv_path = os.path.join(os.path.dirname(__file__), 'wordle-word-bank.csv')
+try:
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        priority_words = [row[0].lower().strip() for row in reader if row and row[0].strip()]
+except FileNotFoundError:
+    print(f"Priority word file not found: {csv_path}")
+    priority_words = []
+
 # Load all English words (lowercase, deduplicated), sorted by frequency
 try:
     all_words = set(w.lower() for w in words.words() if w.isalpha())
-    # Sort by frequency (most common first), then alphabetically
-    word_list = sorted(
-        all_words,
+    
+    # Remove priority words from all_words to avoid duplicates
+    regular_words = all_words - set(priority_words)
+    
+    # Sort regular words by frequency (most common first), then alphabetically
+    regular_word_list = sorted(
+        regular_words,
         key=lambda w: (-brown_freq[w], w)
     )
+    
+    # Combine: priority words first, then regular words
+    word_list = priority_words + regular_word_list
+    
 except LookupError:
     print("NLTK 'words' or 'brown' corpus not found. Please download them.")
-    word_list = [] # Fallback to empty list if not found.
+    word_list = priority_words  # Fallback to just priority words if NLTK fails
 
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
