@@ -40,14 +40,20 @@ try:
     # Remove priority words from all_words to avoid duplicates
     regular_words = all_words - set(priority_words)
     
+    # Sort priority words by frequency (most common first), then alphabetically
+    sorted_priority_words = sorted(
+        priority_words,
+        key=lambda w: (-brown_freq[w], w)
+    )
+    
     # Sort regular words by frequency (most common first), then alphabetically
     regular_word_list = sorted(
         regular_words,
         key=lambda w: (-brown_freq[w], w)
     )
     
-    # Combine: priority words first, then regular words
-    word_list = priority_words + regular_word_list
+    # Combine: sorted priority words first, then regular words
+    word_list = sorted_priority_words + regular_word_list
     
 except LookupError:
     print("NLTK 'words' or 'brown' corpus not found. Please download them.")
