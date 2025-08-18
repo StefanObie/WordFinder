@@ -1,18 +1,23 @@
 # Word Finder
 
-A web application for searching and filtering words using regex and keyboard constraints, inspired by games like [Wordle](https://www.nytimes.com/games/wordle/index.html) and [Decipher](https://decipher.wtf/).
+A web application for searching and filtering words using regex and keyboard constraints — inspired by games like [Wordle](https://www.nytimes.com/games/wordle/index.html) and [Decipher](https://decipher.wtf/).  
 
-The application is [hosted](https://wordfinder-nno8.onrender.com) on [Render](https://dashboard.render.com/). Initially, it will take long (up to 60s) to load, due to Render's free plan. All subsequent interactions will be significantly faster.
+🔗 Live App: [wordfinder.crossland.co.za](https://wordfinder.crossland.co.za)  
+🌐 Backup Hosting: [wordfinder-nno8.onrender.com](https://wordfinder-nno8.onrender.com)  
+🛠 Render Dashboard: [dashboard.render.com](https://dashboard.render.com/)  
 
-## Project Structure
+> ⚠️ Note: This app is hosted on Render's free plan, and may take up to 60 seconds to spin up initially. After startup, all subsequent requests are significantly faster. If the app sits idle for 15 minutes, it will shut down and require another cold start.  
 
-### Python Backend
-- Flask API
-- [List of words](https://github.com/seanpatlan/wordle-words.git) that Wordle selects the daily word.
-- NLTK word list, sorted by rarity.
+## Project Structure  
 
-### Static Frontend Files 
-- HTML, CSS, JS
+### Python Backend  
+- Flask API  
+- Uses the [Wordle word list](https://github.com/seanpatlan/wordle-words.git), which contains the official daily words.  
+- Incorporates NLTK word list, sorted by how commonly it is found in the English language.  
+
+### Static Frontend  
+- HTML, CSS, and JavaScript  
+
 
 <!-- ## Getting Started
 
