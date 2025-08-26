@@ -83,6 +83,21 @@ function clearSearch() {
     init();
 }
 
+function disallowAll() {
+    // Set all keys to disallowed except those that are inline (in letter boxes)
+    const boxes = document.querySelectorAll('#letterBoxes input');
+    const allBoxVals = Array.from(boxes).map(b => b.value.trim().toLowerCase());
+    
+    Object.keys(keyStates).forEach(l => {
+        if (!allBoxVals.includes(l)) {
+            keyStates[l] = 'disallowed';
+        }
+    });
+    
+    renderKeyboard();
+    searchWords();
+}
+
 function displayWords(words, totalMatches) {
     const wordList = document.getElementById('wordList');
     
@@ -269,6 +284,9 @@ document.getElementById('lengthFilter').addEventListener('input', function() {
 
 // Attach clear button event
 document.getElementById('clearBtn').addEventListener('click', clearSearch);
+
+// Attach disallow all button event
+document.getElementById('disallowAllBtn').addEventListener('click', disallowAll);
 
 // Initialize the app
 init();
