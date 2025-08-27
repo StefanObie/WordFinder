@@ -14,11 +14,14 @@
             <label for="lengthFilter">Word length:</label>
             <input id="lengthFilter" type="number" min="1" max="15" value="5" />
             <button id="clearBtn">Clear</button>
-            <button id="disallowAllBtn">Disallow All</button>
         </div>
         <div id="letterBoxes"></div>
         <div id="keyboard"></div>
         <div id="keyboard-legend" class="keyboard-legend">
+            <div class="legend-item">
+                <span class="keyboard-key neutral legend-key">A</span>
+                <span class="legend-label">Neutral</span>
+            </div>
             <div class="legend-item">
                 <span class="keyboard-key inline legend-key">A</span>
                 <span class="legend-label">Correct</span>
@@ -31,10 +34,7 @@
                 <span class="keyboard-key disallowed legend-key">A</span>
                 <span class="legend-label">Not Allowed</span>
             </div>
-            <div class="legend-item">
-                <span class="keyboard-key neutral legend-key">A</span>
-                <span class="legend-label">Neutral</span>
-            </div>
+            <button id="disallowAllBtn">Disallow All</button>
         </div>
         <div class="stats">
             <div class="stat-item" id="wordCount"></div>
