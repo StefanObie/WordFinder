@@ -262,6 +262,24 @@ button:hover {
     margin-right: 2px;
 }
 
+.legend-item.shortcut-hint {
+    width: 100%;
+    justify-content: center;
+    border-top: 1px solid #ddd;
+    margin-top: 8px;
+    padding-top: 8px;
+}
+
+.legend-item.shortcut-hint .legend-label {
+    font-size: 13px;
+    color: #666;
+}
+
+.legend-item.shortcut-hint .legend-label strong {
+    color: #1e40af;
+    font-weight: 600;
+}
+
 /* Only keep truly mobile-specific overrides here */
 @media (max-width: 600px) {
     #lengthFilter {

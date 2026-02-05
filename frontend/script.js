@@ -288,5 +288,33 @@ document.getElementById('clearBtn').addEventListener('click', clearSearch);
 // Attach disallow all button event
 document.getElementById('disallowAllBtn').addEventListener('click', disallowAll);
 
+// Keyboard shortcuts: Ctrl+Letter = Disallow, Shift+Letter = Allow
+document.addEventListener('keydown', function(e) {
+    const letter = e.key.toLowerCase();
+    
+    // Check if it's a letter
+    if (!/^[a-z]$/.test(letter)) return;
+    
+    // Don't intercept if focused on input fields
+    if (document.activeElement.classList.contains('letter-box') || 
+        document.activeElement.id === 'lengthFilter') {
+        return;
+    }
+    
+    if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+        // Ctrl+Letter: Disallow
+        e.preventDefault();
+        keyStates[letter] = 'disallowed';
+        renderKeyboard();
+        searchWords();
+    } else if (e.shiftKey && !e.ctrlKey && !e.altKey) {
+        // Shift+Letter: Allow
+        e.preventDefault();
+        keyStates[letter] = 'allowed';
+        renderKeyboard();
+        searchWords();
+    }
+});
+
 // Initialize the app
 init();
