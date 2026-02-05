@@ -288,7 +288,7 @@ document.getElementById('clearBtn').addEventListener('click', clearSearch);
 // Attach disallow all button event
 document.getElementById('disallowAllBtn').addEventListener('click', disallowAll);
 
-// Keyboard shortcuts: Ctrl+Letter = Disallow, Shift+Letter = Allow
+// Keyboard shortcuts: Letter = Disallow, Shift+Letter = Allow
 document.addEventListener('keydown', function(e) {
     const letter = e.key.toLowerCase();
     
@@ -301,18 +301,18 @@ document.addEventListener('keydown', function(e) {
         return;
     }
     
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
-        // Ctrl+Letter or Cmd+Letter: Disallow
-        e.preventDefault();
-        e.stopPropagation();
-        keyStates[letter] = 'disallowed';
-        renderKeyboard();
-        searchWords();
-    } else if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
         // Shift+Letter: Allow
         e.preventDefault();
         e.stopPropagation();
         keyStates[letter] = 'allowed';
+        renderKeyboard();
+        searchWords();
+    } else if (!e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Plain Letter: Disallow
+        e.preventDefault();
+        e.stopPropagation();
+        keyStates[letter] = 'disallowed';
         renderKeyboard();
         searchWords();
     }
