@@ -301,20 +301,22 @@ document.addEventListener('keydown', function(e) {
         return;
     }
     
-    if (e.ctrlKey && !e.shiftKey && !e.altKey) {
-        // Ctrl+Letter: Disallow
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        // Ctrl+Letter or Cmd+Letter: Disallow
         e.preventDefault();
+        e.stopPropagation();
         keyStates[letter] = 'disallowed';
         renderKeyboard();
         searchWords();
-    } else if (e.shiftKey && !e.ctrlKey && !e.altKey) {
+    } else if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
         // Shift+Letter: Allow
         e.preventDefault();
+        e.stopPropagation();
         keyStates[letter] = 'allowed';
         renderKeyboard();
         searchWords();
     }
-});
+}, true);
 
 // Initialize the app
 init();
