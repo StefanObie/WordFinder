@@ -149,6 +149,20 @@ const KEYBOARD_ROWS = [
 const keyStates = {};
 "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(l => keyStates[l.toLowerCase()] = "neutral");
 
+function applyShortcutState(letter, state) {
+    if (!letter) return;
+    const normalized = letter.toLowerCase();
+    if (!keyStates.hasOwnProperty(normalized)) return;
+
+    const boxes = document.querySelectorAll('#letterBoxes input');
+    const allBoxVals = Array.from(boxes).map(b => b.value.trim().toLowerCase());
+    if (allBoxVals.includes(normalized)) return;
+
+    keyStates[normalized] = state;
+    renderKeyboard();
+    searchWords();
+}
+
 // Render the on-screen keyboard (stub)
 function renderKeyboard() {
     const keyboardDiv = document.getElementById('keyboard');
@@ -288,33 +302,39 @@ document.getElementById('clearBtn').addEventListener('click', clearSearch);
 // Attach disallow all button event
 document.getElementById('disallowAllBtn').addEventListener('click', disallowAll);
 
-// Keyboard shortcuts: Letter = Disallow, Shift+Letter = Allow
+ // Keyboard shortcuts: Ctrl/Meta+Letter = Allow, Shift+Letter or Letter = Disallow
 document.addEventListener('keydown', function(e) {
-    const letter = e.key.toLowerCase();
-    
-    // Check if it's a letter
-    if (!/^[a-z]$/.test(letter)) return;
-    
-    // Don't intercept if focused on input fields
-    if (document.activeElement.classList.contains('letter-box') || 
-        document.activeElement.id === 'lengthFilter') {
+    const key = e.key || '';
+    if (key.length !== 1 || !/^[a-z]$/i.test(key)) return;
+
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.classList.contains('letter-box') ||
+        activeEl.id === 'lengthFilter')) {
         return;
     }
-    
-    if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        // Shift+Letter: Allow
+
+    const letter = key.toLowerCase();
+    const hasCtrlLike = e.ctrlKey || e.metaKey;
+    const hasAlt = e.altKey;
+
+    if (hasCtrlLike && !hasAlt) {
         e.preventDefault();
         e.stopPropagation();
-        keyStates[letter] = 'allowed';
-        renderKeyboard();
-        searchWords();
-    } else if (!e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        // Plain Letter: Disallow
+        applyShortcutState(letter, 'allowed');
+        return;
+    }
+
+    if (e.shiftKey && !hasCtrlLike && !hasAlt) {
         e.preventDefault();
         e.stopPropagation();
-        keyStates[letter] = 'disallowed';
-        renderKeyboard();
-        searchWords();
+        applyShortcutState(letter, 'disallowed');
+        return;
+    }
+
+    if (!e.shiftKey && !hasCtrlLike && !hasAlt) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyShortcutState(letter, 'disallowed');
     }
 }, true);
 
