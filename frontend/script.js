@@ -149,19 +149,6 @@ const KEYBOARD_ROWS = [
 const keyStates = {};
 "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(l => keyStates[l.toLowerCase()] = "neutral");
 
-function applyShortcutState(letter, state) {
-    if (!letter) return;
-    const normalized = letter.toLowerCase();
-    if (!keyStates.hasOwnProperty(normalized)) return;
-
-    const boxes = document.querySelectorAll('#letterBoxes input');
-    const allBoxVals = Array.from(boxes).map(b => b.value.trim().toLowerCase());
-    if (allBoxVals.includes(normalized)) return;
-
-    keyStates[normalized] = state;
-    renderKeyboard();
-    searchWords();
-}
 
 // Render the on-screen keyboard (stub)
 function renderKeyboard() {
@@ -302,40 +289,29 @@ document.getElementById('clearBtn').addEventListener('click', clearSearch);
 // Attach disallow all button event
 document.getElementById('disallowAllBtn').addEventListener('click', disallowAll);
 
- // Keyboard shortcuts: Ctrl/Meta+Letter = Allow, Shift+Letter or Letter = Disallow
+// Automatically disallow letters typed when no pattern box is focused
 document.addEventListener('keydown', function(e) {
     const key = e.key || '';
     if (key.length !== 1 || !/^[a-z]$/i.test(key)) return;
 
     const activeEl = document.activeElement;
-    if (activeEl && (activeEl.classList.contains('letter-box') ||
-        activeEl.id === 'lengthFilter')) {
+    if (activeEl && activeEl.classList && activeEl.classList.contains('letter-box')) {
         return;
     }
+
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    e.preventDefault();
+    e.stopPropagation();
 
     const letter = key.toLowerCase();
-    const hasCtrlLike = e.ctrlKey || e.metaKey;
-    const hasAlt = e.altKey;
+    const boxes = document.querySelectorAll('#letterBoxes input');
+    const allBoxVals = Array.from(boxes).map(b => b.value.trim().toLowerCase());
+    if (allBoxVals.includes(letter)) return;
 
-    if (hasCtrlLike && !hasAlt) {
-        e.preventDefault();
-        e.stopPropagation();
-        applyShortcutState(letter, 'allowed');
-        return;
-    }
-
-    if (e.shiftKey && !hasCtrlLike && !hasAlt) {
-        e.preventDefault();
-        e.stopPropagation();
-        applyShortcutState(letter, 'disallowed');
-        return;
-    }
-
-    if (!e.shiftKey && !hasCtrlLike && !hasAlt) {
-        e.preventDefault();
-        e.stopPropagation();
-        applyShortcutState(letter, 'disallowed');
-    }
+    keyStates[letter] = 'disallowed';
+    renderKeyboard();
+    searchWords();
 }, true);
 
 // Initialize the app
