@@ -1,3 +1,2 @@
-# For Self Solver
-selenium
-webdriver-manager
+# For Self Solver (Playwright version)
+playwright

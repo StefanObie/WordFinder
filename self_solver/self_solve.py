@@ -11,24 +11,24 @@ Automatically plays NYT Wordle by:
 import os
 import csv
 import time
-import re
 from collections import Counter
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+from playwright.sync_api import sync_playwright
 
 # ============= CONFIGURATION =============
-STARTING_WORD = "crane"  # None = use first word from sorted list, or set manually (e.g., "soare")
+STARTING_WORD = "stair"  # None = use first word from sorted list, or set manually (e.g., "soare")
 WORDLE_URL = "https://www.nytimes.com/games/wordle/index.html"
 HEADLESS = False  # Set to True to hide browser window
 DELAY_AFTER_GUESS = 3  # Seconds to wait for tile animations
-# =========================================
 
+# Edge Profile Configuration
+# Option 1: Use a separate automation profile (recommended - doesn't require closing Edge)
+USE_AUTOMATION_PROFILE = True  # Uses a dedicated profile just for automation
+AUTOMATION_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Data - Automation"
+
+# Option 2: Use your main profile (requires Edge to be completely closed)
+USE_EDGE_PROFILE = False  # Set to True to use your main Edge profile (requires Edge closed)
+EDGE_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Data\Profile 3"
+# =========================================
 
 def load_word_bank():
     """Load pre-sorted word bank (already sorted by frequency, then alphabetically)."""
@@ -80,83 +80,66 @@ def load_word_bank():
     print("Tip: Run 'python sort_wordbank_once.py' to create a pre-sorted file for faster loading")
     return sorted_words
 
-
-def setup_driver():
-    """Initialize and configure Selenium WebDriver."""
-    chrome_options = Options()
-    if HEADLESS:
-        chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-    
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.maximize_window()
-    
-    return driver
-
-
-def click_play_button(driver):
+def click_play_button(page):
     """Click the Play button on the landing page if present."""
     try:
-        # Wait for the Play button to appear
         print("Looking for Play button...")
-        wait = WebDriverWait(driver, 5)
-        
-        # Try to find and click the Play button
-        play_button = wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-testid='Play']"))
-        )
-        play_button.click()
-        print("✓ Clicked Play button")
-        time.sleep(2)
-        return True
+        # Wait for Play button and click it
+        play_button = page.locator("button[data-testid='Play']")
+        if play_button.is_visible(timeout=5000):
+            # Use click with no_wait_after to prevent page navigation issues
+            play_button.click(no_wait_after=False)
+            print("✓ Clicked Play button")
+            # Wait for navigation to complete
+            page.wait_for_load_state("networkidle")
+            time.sleep(2)
+            return True
     except Exception as e:
-        print(f"Play button not found (may already be on game page)")
-        return False
+        print(f"Play button not found (may already be on game page): {e}")
+    return False
 
-def close_modals(driver):
+def close_modals(page):
     """Close any popups/modals that might appear."""
     try:
-        # Wait a bit for modals to appear
         time.sleep(2)
         
-        # Try to close instruction modal
-        close_buttons = driver.find_elements(By.CSS_SELECTOR, "button[aria-label='Close'], button.Modal-module_closeIcon__TcEKb, svg[data-testid='icon-close']")
-        for button in close_buttons:
+        # Try multiple close button selectors
+        close_selectors = [
+            "button[aria-label='Close']",
+            "button.Modal-module_closeIcon__TcEKb",
+            "svg[data-testid='icon-close']"
+        ]
+        
+        for selector in close_selectors:
             try:
-                if button.is_displayed():
-                    button.click()
-                    print("✓ Closed modal")
-                    time.sleep(0.5)
+                close_buttons = page.locator(selector).all()
+                for button in close_buttons:
+                    if button.is_visible():
+                        button.click()
+                        print("✓ Closed modal")
+                        time.sleep(0.5)
             except:
                 pass
         
-        # Sometimes need to click the game area to dismiss overlays
+        # Click game area to dismiss overlays
         try:
-            game_area = driver.find_element(By.TAG_NAME, "body")
-            game_area.click()
+            page.locator("body").click()
         except:
             pass
             
     except Exception as e:
         print(f"Note: Could not close modals: {e}")
 
-
-def submit_guess(driver, word):
+def submit_guess(page, word):
     """Type a word and submit it."""
     try:
-        # Find the body or game element to send keys to
-        game = driver.find_element(By.TAG_NAME, "body")
-        
         # Type each letter
         for letter in word.upper():
-            game.send_keys(letter)
+            page.keyboard.press(letter)
             time.sleep(0.1)
         
         # Press Enter
-        game.send_keys(Keys.RETURN)
+        page.keyboard.press("Enter")
         print(f"Submitted guess: {word.upper()}")
         
         # Wait for animations
@@ -166,8 +149,7 @@ def submit_guess(driver, word):
         print(f"Error submitting guess: {e}")
         raise
 
-
-def get_feedback(driver, row_number):
+def get_feedback(page, row_number):
     """
     Scrape feedback from the specified row.
     Returns list of tuples: [(letter, state), ...]
@@ -175,7 +157,7 @@ def get_feedback(driver, row_number):
     """
     try:
         # Find all rows
-        rows = driver.find_elements(By.CSS_SELECTOR, "div[role='group'][aria-label^='Row']")
+        rows = page.locator("div[role='group'][aria-label^='Row']").all()
         
         if row_number > len(rows):
             raise Exception(f"Row {row_number} not found")
@@ -183,7 +165,7 @@ def get_feedback(driver, row_number):
         current_row = rows[row_number - 1]
         
         # Find all tiles in this row
-        tiles = current_row.find_elements(By.CSS_SELECTOR, "div[data-state]")
+        tiles = current_row.locator("div[data-state]").all()
         
         feedback = []
         for tile in tiles:
@@ -206,7 +188,6 @@ def get_feedback(driver, row_number):
         print(f"Error getting feedback: {e}")
         return []
 
-
 def display_feedback(feedback):
     """Display feedback with emoji visualization."""
     visual = ""
@@ -218,7 +199,6 @@ def display_feedback(feedback):
         else:
             visual += "⬜"
     return visual
-
 
 def filter_candidates(candidates, guess, feedback):
     """
@@ -291,8 +271,7 @@ def filter_candidates(candidates, guess, feedback):
     
     return filtered
 
-
-def solve_wordle(driver, word_bank):
+def solve_wordle(page, word_bank):
     """Main solving loop."""
     candidates = word_bank.copy()
     
@@ -326,13 +305,13 @@ def solve_wordle(driver, word_bank):
         
         # Submit guess
         try:
-            submit_guess(driver, current_guess)
+            submit_guess(page, current_guess)
         except Exception as e:
             print(f"Failed to submit guess: {e}")
             return False
         
         # Get feedback
-        feedback = get_feedback(driver, attempt)
+        feedback = get_feedback(page, attempt)
         
         if not feedback:
             print("⚠️ Could not read feedback from page")
@@ -362,11 +341,10 @@ def solve_wordle(driver, word_bank):
     print(f"{'='*50}")
     return False
 
-
 def main():
     """Main entry point."""
     print("=" * 50)
-    print("WORDLE SELF-SOLVER")
+    print("WORDLE SELF-SOLVER (Playwright)")
     print("=" * 50)
     
     # Load word bank
@@ -377,47 +355,96 @@ def main():
         print("Error: No words loaded. Exiting.")
         return
     
-    # Setup browser
+    # Setup Playwright
     print("\nInitializing browser...")
-    driver = setup_driver()
     
-    try:
-        # Navigate to Wordle
-        print(f"\nNavigating to {WORDLE_URL}...")
-        driver.get(WORDLE_URL)
-        
-        # Wait for page to load
-        print("Waiting for page to load...")
-        time.sleep(3)
-        
-        # Click Play button if present
-        click_play_button(driver)
-        
-        # Close any modals
-        close_modals(driver)
-        
-        # Solve the puzzle
-        success = solve_wordle(driver, word_bank)
-        
-        if success:
-            print("\n🎉 Successfully solved today's Wordle!")
-        else:
-            print("\n😞 Could not solve today's Wordle")
-        
-        # Keep browser open for a few seconds to see the result
-        print("\nKeeping browser open for 5 seconds...")
-        time.sleep(5)
-        
-    except KeyboardInterrupt:
-        print("\n\nInterrupted by user")
-    except Exception as e:
-        print(f"\n❌ Error occurred: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        print("\nClosing browser...")
-        driver.quit()
-
+    with sync_playwright() as p:
+        try:
+            # Launch Edge with profile
+            if USE_AUTOMATION_PROFILE:
+                # Use a dedicated automation profile (doesn't conflict with your main Edge)
+                print(f"Using automation profile: {AUTOMATION_PROFILE_PATH}")
+                print("This is a separate profile - your main Edge can stay open!")
+                
+                browser = p.chromium.launch_persistent_context(
+                    user_data_dir=AUTOMATION_PROFILE_PATH,
+                    headless=HEADLESS,
+                    channel="msedge",
+                    args=[
+                        "--disable-blink-features=AutomationControlled"
+                    ],
+                    no_viewport=True
+                )
+                page = browser.pages[0] if browser.pages else browser.new_page()
+                
+            elif USE_EDGE_PROFILE:
+                # Use your main Edge profile (requires Edge to be closed)
+                import os.path
+                user_data_dir = os.path.dirname(EDGE_PROFILE_PATH)
+                profile_name = os.path.basename(EDGE_PROFILE_PATH)
+                
+                print(f"Using Edge user data: {user_data_dir}")
+                print(f"Using profile: {profile_name}")
+                print("⚠️  IMPORTANT: Make sure Edge is completely closed before running!")
+                print("⚠️  Check Task Manager and kill all msedge.exe processes")
+                
+                browser = p.chromium.launch_persistent_context(
+                    user_data_dir=user_data_dir,
+                    headless=HEADLESS,
+                    channel="msedge",
+                    args=[
+                        f"--profile-directory={profile_name}",
+                        "--disable-blink-features=AutomationControlled"
+                    ],
+                    no_viewport=True
+                )
+                page = browser.pages[0] if browser.pages else browser.new_page()
+                
+            else:
+                # Launch without any profile (temporary session)
+                print("Using temporary session (no profile)")
+                browser = p.chromium.launch(
+                    headless=HEADLESS,
+                    channel="msedge"
+                )
+                context = browser.new_context()
+                page = context.new_page()
+            
+            # Navigate to Wordle
+            print(f"\nNavigating to {WORDLE_URL}...")
+            page.goto(WORDLE_URL)
+            
+            # Wait for page to load
+            print("Waiting for page to load...")
+            time.sleep(3)
+            
+            # Click Play button if present
+            click_play_button(page)
+            
+            # Close any modals
+            close_modals(page)
+            
+            # Solve the puzzle
+            success = solve_wordle(page, word_bank)
+            
+            if success:
+                print("\n🎉 Successfully solved today's Wordle!")
+            else:
+                print("\n😞 Could not solve today's Wordle")
+            
+            # Keep browser open for a few seconds to see the result
+            print("\nKeeping browser open for 5 seconds...")
+            time.sleep(5)
+            
+        except KeyboardInterrupt:
+            print("\n\nInterrupted by user")
+        except Exception as e:
+            print(f"\n❌ Error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            print("\nClosing browser...")
+            browser.close()
 
 if __name__ == "__main__":
     main()
