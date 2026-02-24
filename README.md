@@ -2,11 +2,11 @@
 
 A web application for searching and filtering words using regex and keyboard constraints — inspired by games like [Wordle](https://www.nytimes.com/games/wordle/index.html) and [Decipher](https://decipher.wtf/).  
 
-🔗 Live App: [wordfinder.crossland.co.za](https://wordfinder.crossland.co.za)  
+🔗 Live App: [words.crossland.co.za](https://words.crossland.co.za)  
 🌐 Backup Hosting: [wordfinder-nno8.onrender.com](https://wordfinder-nno8.onrender.com)  
 🛠 Render Dashboard: [dashboard.render.com](https://dashboard.render.com/)  
 
-> ⚠️ Note: This app is hosted on Render's free plan, and may take up to 60 seconds to spin up initially. After startup, all subsequent requests are significantly faster. If the app sits idle for 15 minutes, it will shut down and require another cold start.  
+> ⚠️ Note: The app is now self-hosted on a Raspberry Pi for faster response times and no cold starts. The Render-hosted version remains available as a backup, but may take up to 60 seconds to spin up initially.  
 
 ## Project Structure  
 
