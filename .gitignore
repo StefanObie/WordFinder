@@ -4,3 +4,4 @@ backend/venv
 gunicorn.ctl
 
 self_solver/.env
+self_solver/venv

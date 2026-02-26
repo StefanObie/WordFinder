@@ -17,11 +17,11 @@ from playwright.sync_api import sync_playwright
 # ============= CONFIGURATION =============
 STARTING_WORD = "stair"     # None = use first word from sorted list, or set manually.
 WORDLE_URL = "https://www.nytimes.com/games/wordle/index.html"
-HEADLESS = False            # Set to True to hide browser window
-DELAY_AFTER_GUESS = 3       # Seconds to wait for tile animations
+HEADLESS = True            # Set to True to hide browser window
+DELAY_AFTER_GUESS = 3      # Seconds to wait for tile animations
 
 # Browser Profile Configuration
-USE_AUTOMATION_PROFILE = False  # True = use automation profile, False = incognito mode
+USE_AUTOMATION_PROFILE = True  # True = use automation profile, False = incognito mode
 AUTOMATION_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Data - Automation"
 # =========================================
 
@@ -404,20 +404,21 @@ def main():
     
     with sync_playwright() as p:
         try:
-            # Launch Edge
+            # Launch Chrome (Raspberry Pi)
+            chromium_path = "/usr/bin/chromium-browser" if os.path.exists("/usr/bin/chromium-browser") else "/usr/bin/chromium"
             if USE_AUTOMATION_PROFILE:
-                print(f"Using automation profile: {AUTOMATION_PROFILE_PATH}")
+                print("Using persistent Chromium profile (Raspberry Pi)")
                 browser = p.chromium.launch_persistent_context(
-                    user_data_dir=AUTOMATION_PROFILE_PATH,
+                    user_data_dir=os.path.expanduser("~/.config/chromium"),
                     headless=HEADLESS,
-                    channel="msedge",
+                    executable_path=chromium_path,
                     args=["--disable-blink-features=AutomationControlled"],
                     no_viewport=True
                 )
                 page = browser.pages[0] if browser.pages else browser.new_page()
             else:
                 print("Using incognito mode (no profile)")
-                browser = p.chromium.launch(headless=HEADLESS, channel="msedge")
+                browser = p.chromium.launch(headless=HEADLESS, executable_path=chromium_path)
                 context = browser.new_context()
                 page = context.new_page()
             
