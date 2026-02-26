@@ -1,1 +1,6 @@
+backend/__pycache__
+backend/nltk_data
+backend/venv
+gunicorn.ctl
+
 self_solver/.env
