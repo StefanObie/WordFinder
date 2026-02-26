@@ -11,74 +11,30 @@ Automatically plays NYT Wordle by:
 import os
 import csv
 import time
-from collections import Counter
+from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 # ============= CONFIGURATION =============
-STARTING_WORD = "stair"  # None = use first word from sorted list, or set manually (e.g., "soare")
+STARTING_WORD = "stair"     # None = use first word from sorted list, or set manually.
 WORDLE_URL = "https://www.nytimes.com/games/wordle/index.html"
-HEADLESS = False  # Set to True to hide browser window
-DELAY_AFTER_GUESS = 3  # Seconds to wait for tile animations
+HEADLESS = False            # Set to True to hide browser window
+DELAY_AFTER_GUESS = 3       # Seconds to wait for tile animations
 
-# Edge Profile Configuration
-# Option 1: Use a separate automation profile (recommended - doesn't require closing Edge)
-USE_AUTOMATION_PROFILE = True  # Uses a dedicated profile just for automation
+# Browser Profile Configuration
+USE_AUTOMATION_PROFILE = False  # True = use automation profile, False = incognito mode
 AUTOMATION_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Data - Automation"
-
-# Option 2: Use your main profile (requires Edge to be completely closed)
-USE_EDGE_PROFILE = False  # Set to True to use your main Edge profile (requires Edge closed)
-EDGE_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Data\Profile 3"
 # =========================================
 
 def load_word_bank():
     """Load pre-sorted word bank (already sorted by frequency, then alphabetically)."""
-    # Try to load pre-sorted word bank first (faster)
     sorted_csv_path = os.path.join(os.path.dirname(__file__), 'wordle-word-bank-sorted.csv')
     
-    if os.path.exists(sorted_csv_path):
-        # Load pre-sorted file
-        try:
-            with open(sorted_csv_path, 'r', encoding='utf-8') as f:
-                reader = csv.reader(f)
-                words = [row[0].lower().strip() for row in reader if row and row[0].strip()]
-            print(f"Loaded {len(words)} pre-sorted words from word bank")
-            return words
-        except Exception as e:
-            print(f"Error loading sorted file: {e}")
+    with open(sorted_csv_path, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        words = [row[0].lower().strip() for row in reader if row and row[0].strip()]
     
-    # Fallback: load and sort on-the-fly if sorted file doesn't exist
-    print("Pre-sorted file not found, sorting on-the-fly...")
-    try:
-        import nltk
-        from nltk.corpus import brown
-        
-        try:
-            brown_freq = Counter(w.lower() for w in brown.words() if w.isalpha())
-        except LookupError:
-            print("Brown corpus not found, using alphabetical sort only")
-            brown_freq = Counter()
-    except ImportError:
-        print("NLTK not available, using alphabetical sort only")
-        brown_freq = Counter()
-    
-    # Load Wordle word bank
-    csv_path = os.path.join(os.path.dirname(__file__), 'wordle-word-bank.csv')
-    words = []
-    
-    try:
-        with open(csv_path, 'r', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            words = [row[0].lower().strip() for row in reader if row and row[0].strip()]
-    except FileNotFoundError:
-        print(f"Error: Word bank file not found at {csv_path}")
-        return []
-    
-    # Sort by frequency (descending), then alphabetically
-    sorted_words = sorted(words, key=lambda w: (-brown_freq.get(w, 0), w))
-    
-    print(f"Loaded {len(sorted_words)} words from word bank")
-    print("Tip: Run 'python sort_wordbank_once.py' to create a pre-sorted file for faster loading")
-    return sorted_words
+    print(f"Loaded {len(words)} pre-sorted words from word bank")
+    return words
 
 def click_play_button(page):
     """Click the Play button on the landing page if present."""
@@ -92,7 +48,7 @@ def click_play_button(page):
             print("✓ Clicked Play button")
             # Wait for navigation to complete
             page.wait_for_load_state("networkidle")
-            time.sleep(2)
+            time.sleep(0.5)
             return True
     except Exception as e:
         print(f"Play button not found (may already be on game page): {e}")
@@ -101,7 +57,7 @@ def click_play_button(page):
 def close_modals(page):
     """Close any popups/modals that might appear."""
     try:
-        time.sleep(2)
+        time.sleep(0.5)
         
         # Try multiple close button selectors
         close_selectors = [
@@ -117,7 +73,7 @@ def close_modals(page):
                     if button.is_visible():
                         button.click()
                         print("✓ Closed modal")
-                        time.sleep(0.5)
+                        time.sleep(0.2)
             except:
                 pass
         
@@ -272,7 +228,7 @@ def filter_candidates(candidates, guess, feedback):
     return filtered
 
 def solve_wordle(page, word_bank):
-    """Main solving loop."""
+    """Main solving loop. Returns stats dictionary."""
     candidates = word_bank.copy()
     
     # Determine starting word
@@ -286,6 +242,14 @@ def solve_wordle(page, word_bank):
     print(f"Total candidates: {len(candidates)}")
     print(f"{'='*50}\n")
     
+    # Track stats for email
+    stats = {
+        'solved': False,
+        'attempts': 0,
+        'answer': None,
+        'guesses': []  # List of {'guess': str, 'feedback': list, 'remaining': int, 'visual': str}
+    }
+    
     max_attempts = 6
     
     for attempt in range(1, max_attempts + 1):
@@ -297,7 +261,7 @@ def solve_wordle(page, word_bank):
         else:
             if not candidates:
                 print("❌ No valid candidates remaining!")
-                return False
+                return stats
             current_guess = candidates[0]
         
         print(f"Guessing: {current_guess.upper()}")
@@ -308,18 +272,27 @@ def solve_wordle(page, word_bank):
             submit_guess(page, current_guess)
         except Exception as e:
             print(f"Failed to submit guess: {e}")
-            return False
+            return stats
         
         # Get feedback
         feedback = get_feedback(page, attempt)
         
         if not feedback:
             print("⚠️ Could not read feedback from page")
-            return False
+            return stats
         
         # Display feedback
         visual = display_feedback(feedback)
         print(f"Feedback: {visual}")
+        
+        # Track this guess
+        stats['attempts'] = attempt
+        stats['guesses'].append({
+            'guess': current_guess.upper(),
+            'feedback': feedback,
+            'visual': visual,
+            'remaining_before': len(candidates)
+        })
         
         # Check if solved
         if all(state == 'correct' for _, state in feedback):
@@ -327,7 +300,9 @@ def solve_wordle(page, word_bank):
             print(f"✅ Solved in {attempt} attempt(s)!")
             print(f"Answer: {current_guess.upper()}")
             print(f"{'='*50}")
-            return True
+            stats['solved'] = True
+            stats['answer'] = current_guess.upper()
+            return stats
         
         # Filter candidates for next round
         candidates = filter_candidates(candidates, current_guess, feedback)
@@ -339,7 +314,76 @@ def solve_wordle(page, word_bank):
     print(f"\n{'='*50}")
     print("❌ Failed to solve within 6 attempts")
     print(f"{'='*50}")
-    return False
+    return stats
+
+def send_wordle_summary(stats):
+    """Send Wordle solving summary via ZeptoMail."""
+    try:
+        import requests
+        from dotenv import load_dotenv
+        load_dotenv()
+        
+        # ZeptoMail configuration
+        zepto_token = os.getenv("ZEPTOMAIL_TOKEN")
+        from_email = os.getenv("EMAIL_FROM")
+        to_email = os.getenv("EMAIL_TO")
+        
+        if not all([zepto_token, from_email, to_email]):
+            print("⚠️ Email configuration missing (ZEPTOMAIL_TOKEN, EMAIL_FROM, EMAIL_TO)")
+            return
+        
+        # Build email content
+        today = datetime.now().strftime("%B %d, %Y")
+        
+        if stats['solved']:
+            subject = f"Wordle Solved - {stats['attempts']}/6 ({today})"
+            status = f"SOLVED in {stats['attempts']} attempts"
+        else:
+            subject = f"Wordle Failed ({today})"
+            status = f"NOT SOLVED after {stats['attempts']} attempts"
+        
+        # Build guess details
+        guess_details = []
+        for i, g in enumerate(stats['guesses'], 1):
+            guess_details.append(f"Guess {i}: {g['guess']} {g['visual']}")
+            guess_details.append(f"  Remaining candidates before guess: {g['remaining_before']}")
+        
+        message = f"""Wordle Summary - {today}
+
+{status}
+{f"Answer: {stats['answer']}" if stats['solved'] else ""}
+
+Guesses:
+{chr(10).join(guess_details)}
+
+---
+Auto-generated by Wordle Self-Solver
+"""
+        
+        # ZeptoMail API request
+        url = "https://api.zeptomail.com/v1.1/email"
+        headers = {
+            "Authorization": zepto_token,
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "from": {"address": from_email},
+            "to": [{"email_address": {"address": to_email}}],
+            "subject": subject,
+            "textbody": message
+        }
+        
+        response = requests.post(url, json=payload, headers=headers)
+        
+        if response.status_code == 200:
+            print("✅ Email summary sent successfully")
+        else:
+            print(f"⚠️ Email failed: {response.status_code} - {response.text}")
+            
+    except ImportError:
+        print("⚠️ Install 'requests' and 'python-dotenv' to enable email: pip install requests python-dotenv")
+    except Exception as e:
+        print(f"⚠️ Email error: {e}")
 
 def main():
     """Main entry point."""
@@ -360,53 +404,20 @@ def main():
     
     with sync_playwright() as p:
         try:
-            # Launch Edge with profile
+            # Launch Edge
             if USE_AUTOMATION_PROFILE:
-                # Use a dedicated automation profile (doesn't conflict with your main Edge)
                 print(f"Using automation profile: {AUTOMATION_PROFILE_PATH}")
-                print("This is a separate profile - your main Edge can stay open!")
-                
                 browser = p.chromium.launch_persistent_context(
                     user_data_dir=AUTOMATION_PROFILE_PATH,
                     headless=HEADLESS,
                     channel="msedge",
-                    args=[
-                        "--disable-blink-features=AutomationControlled"
-                    ],
+                    args=["--disable-blink-features=AutomationControlled"],
                     no_viewport=True
                 )
                 page = browser.pages[0] if browser.pages else browser.new_page()
-                
-            elif USE_EDGE_PROFILE:
-                # Use your main Edge profile (requires Edge to be closed)
-                import os.path
-                user_data_dir = os.path.dirname(EDGE_PROFILE_PATH)
-                profile_name = os.path.basename(EDGE_PROFILE_PATH)
-                
-                print(f"Using Edge user data: {user_data_dir}")
-                print(f"Using profile: {profile_name}")
-                print("⚠️  IMPORTANT: Make sure Edge is completely closed before running!")
-                print("⚠️  Check Task Manager and kill all msedge.exe processes")
-                
-                browser = p.chromium.launch_persistent_context(
-                    user_data_dir=user_data_dir,
-                    headless=HEADLESS,
-                    channel="msedge",
-                    args=[
-                        f"--profile-directory={profile_name}",
-                        "--disable-blink-features=AutomationControlled"
-                    ],
-                    no_viewport=True
-                )
-                page = browser.pages[0] if browser.pages else browser.new_page()
-                
             else:
-                # Launch without any profile (temporary session)
-                print("Using temporary session (no profile)")
-                browser = p.chromium.launch(
-                    headless=HEADLESS,
-                    channel="msedge"
-                )
+                print("Using incognito mode (no profile)")
+                browser = p.chromium.launch(headless=HEADLESS, channel="msedge")
                 context = browser.new_context()
                 page = context.new_page()
             
@@ -415,26 +426,27 @@ def main():
             page.goto(WORDLE_URL)
             
             # Wait for page to load
-            print("Waiting for page to load...")
-            time.sleep(3)
+            time.sleep(1)
             
-            # Click Play button if present
+            # Click Play button and close modals
             click_play_button(page)
-            
-            # Close any modals
             close_modals(page)
             
             # Solve the puzzle
-            success = solve_wordle(page, word_bank)
+            stats = solve_wordle(page, word_bank)
             
-            if success:
+            if stats['solved']:
                 print("\n🎉 Successfully solved today's Wordle!")
             else:
                 print("\n😞 Could not solve today's Wordle")
             
-            # Keep browser open for a few seconds to see the result
-            print("\nKeeping browser open for 5 seconds...")
-            time.sleep(5)
+            # Send email summary
+            print("\nSending email summary...")
+            send_wordle_summary(stats)
+            
+            # Keep browser open briefly to see result
+            print("\nKeeping browser open for 3 seconds...")
+            time.sleep(3)
             
         except KeyboardInterrupt:
             print("\n\nInterrupted by user")

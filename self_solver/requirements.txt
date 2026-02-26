@@ -1,2 +1,4 @@
 # For Self Solver (Playwright version)
 playwright
+requests
+python-dotenv
