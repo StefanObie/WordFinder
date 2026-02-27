@@ -5,3 +5,4 @@ gunicorn.ctl
 
 self_solver/.env
 self_solver/venv
+self_solver/__pycache__

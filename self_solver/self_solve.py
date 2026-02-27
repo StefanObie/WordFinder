@@ -13,15 +13,18 @@ import csv
 import time
 from datetime import datetime
 from playwright.sync_api import sync_playwright
+from discord_logger import send_discord_message, MessageType
 
 # ============= CONFIGURATION =============
-STARTING_WORD = "stair"     # None = use first word from sorted list, or set manually.
-WORDLE_URL = "https://www.nytimes.com/games/wordle/index.html"
-HEADLESS = True            # Set to True to hide browser window
-DELAY_AFTER_GUESS = 3      # Seconds to wait for tile animations
+STARTING_WORD = "stair"         # None = use first word from sorted list, or set manually.
+MAX_ATTEMPTS = 6
 
-# Browser Profile Configuration
+# Browser Configuration
+HEADLESS = True                 # Set to True to hide browser window
+DELAY_AFTER_GUESS = 3           # Seconds to wait for tile animations
 USE_AUTOMATION_PROFILE = True  # True = use automation profile, False = incognito mode
+
+WORDLE_URL = "https://www.nytimes.com/games/wordle/index.html"
 AUTOMATION_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Data - Automation"
 # =========================================
 
@@ -45,7 +48,7 @@ def click_play_button(page):
         if play_button.is_visible(timeout=5000):
             # Use click with no_wait_after to prevent page navigation issues
             play_button.click(no_wait_after=False)
-            print("✓ Clicked Play button")
+            print("Clicked Play button")
             # Wait for navigation to complete
             page.wait_for_load_state("networkidle")
             time.sleep(0.5)
@@ -72,7 +75,7 @@ def close_modals(page):
                 for button in close_buttons:
                     if button.is_visible():
                         button.click()
-                        print("✓ Closed modal")
+                        print("Closed modal")
                         time.sleep(0.2)
             except:
                 pass
@@ -242,7 +245,7 @@ def solve_wordle(page, word_bank):
     print(f"Total candidates: {len(candidates)}")
     print(f"{'='*50}\n")
     
-    # Track stats for email
+    # Track stats for feedback
     stats = {
         'solved': False,
         'attempts': 0,
@@ -250,9 +253,7 @@ def solve_wordle(page, word_bank):
         'guesses': []  # List of {'guess': str, 'feedback': list, 'remaining': int, 'visual': str}
     }
     
-    max_attempts = 6
-    
-    for attempt in range(1, max_attempts + 1):
+    for attempt in range(1, MAX_ATTEMPTS + 1):
         print(f"\n--- Attempt {attempt} ---")
         
         # Choose next guess
@@ -260,7 +261,7 @@ def solve_wordle(page, word_bank):
             current_guess = first_guess
         else:
             if not candidates:
-                print("❌ No valid candidates remaining!")
+                print("No valid candidates remaining!")
                 return stats
             current_guess = candidates[0]
         
@@ -278,7 +279,7 @@ def solve_wordle(page, word_bank):
         feedback = get_feedback(page, attempt)
         
         if not feedback:
-            print("⚠️ Could not read feedback from page")
+            print("Could not read feedback from page")
             return stats
         
         # Display feedback
@@ -297,7 +298,7 @@ def solve_wordle(page, word_bank):
         # Check if solved
         if all(state == 'correct' for _, state in feedback):
             print(f"\n{'='*50}")
-            print(f"✅ Solved in {attempt} attempt(s)!")
+            print(f"Solved in {attempt} attempt(s)!")
             print(f"Answer: {current_guess.upper()}")
             print(f"{'='*50}")
             stats['solved'] = True
@@ -312,92 +313,47 @@ def solve_wordle(page, word_bank):
             print(f"Remaining candidates: {', '.join(c.upper() for c in candidates[:10])}")
     
     print(f"\n{'='*50}")
-    print("❌ Failed to solve within 6 attempts")
+    print("Failed to solve within 6 attempts")
     print(f"{'='*50}")
     return stats
 
 def send_wordle_summary(stats):
-    """Send Wordle solving summary via ZeptoMail."""
-    try:
-        import requests
-        from dotenv import load_dotenv
-        load_dotenv()
-        
-        # ZeptoMail configuration
-        zepto_token = os.getenv("ZEPTOMAIL_TOKEN")
-        from_email = os.getenv("EMAIL_FROM")
-        to_email = os.getenv("EMAIL_TO")
-        
-        if not all([zepto_token, from_email, to_email]):
-            print("⚠️ Email configuration missing (ZEPTOMAIL_TOKEN, EMAIL_FROM, EMAIL_TO)")
-            return
-        
-        # Build email content
-        today = datetime.now().strftime("%B %d, %Y")
-        
-        if stats['solved']:
-            subject = f"Wordle Solved - {stats['attempts']}/6 ({today})"
-            status = f"SOLVED in {stats['attempts']} attempts"
-        else:
-            subject = f"Wordle Failed ({today})"
-            status = f"NOT SOLVED after {stats['attempts']} attempts"
-        
-        # Build guess details
-        guess_details = []
-        for i, g in enumerate(stats['guesses'], 1):
-            guess_details.append(f"Guess {i}: {g['guess']} {g['visual']}")
-            guess_details.append(f"  Remaining candidates before guess: {g['remaining_before']}")
-        
-        message = f"""Wordle Summary - {today}
+    """Send Wordle solving summary to Discord webhook using logger."""
+    today = datetime.now().strftime("%B %d, %Y")
+    if stats['solved']:
+        title = f"Wordle Solved - {stats['attempts']}/6 ({today})"
+        status = f"✅ SOLVED in {stats['attempts']} attempts"
+        msg_type = MessageType.SUCCESS
+    else:
+        title = f"Wordle Failed ({today})"
+        status = f"❌ NOT SOLVED after {stats['attempts']} attempts"
+        msg_type = MessageType.ERROR
 
-{status}
-{f"Answer: {stats['answer']}" if stats['solved'] else ""}
+    # Build Wordle-Style Grid
+    grid_lines = []
+    for g in stats['guesses']:
+        grid_lines.append(g['visual'])
+    grid = '\n'.join(grid_lines)
 
-Guesses:
-{chr(10).join(guess_details)}
+    # Build guess details
+    guess_details = []
+    for i, g in enumerate(stats['guesses'], 1):
+        guess_details.append(f"Guess {i}: `{g['guess']}`  (Remaining: {g['remaining_before']})")
 
----
-Auto-generated by Wordle Self-Solver
-"""
-        
-        # ZeptoMail API request
-        url = "https://api.zeptomail.com/v1.1/email"
-        headers = {
-            "Authorization": zepto_token,
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "from": {"address": from_email},
-            "to": [{"email_address": {"address": to_email}}],
-            "subject": subject,
-            "textbody": message
-        }
-        
-        response = requests.post(url, json=payload, headers=headers)
-        
-        if response.status_code == 201:
-            print("✅ Email summary sent successfully")
-        else:
-            print(f"⚠️ Email failed: {response.status_code} - {response.text}")
-            
-    except ImportError:
-        print("⚠️ Install 'requests' and 'python-dotenv' to enable email: pip install requests python-dotenv")
-    except Exception as e:
-        print(f"⚠️ Email error: {e}")
+    answer_line = f"**Answer:** `{stats['answer']}`" if stats['solved'] else ""
+
+    message = f"**{title}**\n\n{status}\n{answer_line}\n\n**Guesses:**\n{grid}\n\n" + '\n'.join(guess_details)
+    send_discord_message(message, msg_type)
 
 def main():
     """Main entry point."""
     print("=" * 50)
-    print("WORDLE SELF-SOLVER (Playwright)")
+    print("WORDLE SELF-SOLVER")
     print("=" * 50)
     
     # Load word bank
     print("\nLoading word bank...")
     word_bank = load_word_bank()
-    
-    if not word_bank:
-        print("Error: No words loaded. Exiting.")
-        return
     
     # Setup Playwright
     print("\nInitializing browser...")
@@ -450,13 +406,12 @@ def main():
             time.sleep(3)
             
         except KeyboardInterrupt:
-            print("\n\nInterrupted by user")
+            send_discord_message("Interrupted by user", MessageType.WARNING)
         except Exception as e:
-            print(f"\n❌ Error occurred: {e}")
+            send_discord_message("Error occurred in main flow", MessageType.ERROR, exception=e)
             import traceback
             traceback.print_exc()
         finally:
-            print("\nClosing browser...")
             browser.close()
 
 if __name__ == "__main__":
