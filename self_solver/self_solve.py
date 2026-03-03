@@ -21,9 +21,9 @@ from discord.discord_notifier import send_wordle_summary, send_missing_word_erro
 MAX_ATTEMPTS = 6
 
 # Browser Configuration
-HEADLESS = False                 # Set to True to hide browser window
+HEADLESS = True                 # Set to True to hide browser window
 DELAY_AFTER_GUESS = 3           # Seconds to wait for tile animations
-USE_AUTOMATION_PROFILE = False  # True = use automation profile, False = incognito mode
+USE_AUTOMATION_PROFILE = True   # True = use automation profile, False = incognito mode
 
 WORDLE_URL = "https://www.nytimes.com/games/wordle/index.html"
 AUTOMATION_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Data - Automation"
