@@ -397,8 +397,8 @@ def main():
             else:
                 print("\n😞 Could not solve today's Wordle")
             
-            # Send email summary
-            print("\nSending email summary...")
+            # Send Discord summary
+            print("\nSending Discord summary...")
             send_wordle_summary(stats)
             
             # Keep browser open briefly to see result
