@@ -8,10 +8,13 @@ Usage:
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Dict, List
 
-# Import from strategy module
-from ..strategy.pattern_utils import calculate_pattern, pattern_to_base3
+# Add parent directory to sys.path to allow imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from strategy.pattern_utils import calculate_pattern, pattern_to_base3
 
 TREE_FILE = os.path.join(os.path.dirname(__file__), "salet.tree.hard.json")
 BACKUP_FILE = os.path.join(os.path.dirname(__file__), "salet.tree.hard.json.backup")
@@ -20,7 +23,6 @@ BACKUP_FILE = os.path.join(os.path.dirname(__file__), "salet.tree.hard.json.back
 def load_tree() -> Dict:
     with open(TREE_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def save_tree(tree: Dict, backup: bool = True) -> None:
     if backup and os.path.exists(TREE_FILE):
@@ -110,6 +112,7 @@ def add_word_to_tree(tree: Dict, answer: str, verbose: bool = True) -> bool:
     """
     Add a word to the tree by following its pattern path and adding missing branches.
     Returns True if any modification was made.
+    Raises ValueError if the word would need to be added at depth >= 6 (beyond 6 guesses).
     """
     if verbose:
         print(f"\nTracing path for: {answer.upper()}")
@@ -149,6 +152,14 @@ def add_word_to_tree(tree: Dict, answer: str, verbose: bool = True) -> bool:
                 if verbose:
                     print(f"  Found terminal mismatch at depth {i}: tree has '{child.upper()}', need '{answer.upper()}'")
                 
+                # Check if converting terminal to branch would exceed max depth
+                # The branch's children would be at depth i+1, representing guess #(i+3)
+                if i >= 4:
+                    error_msg = f"ERROR: Cannot add '{answer.upper()}' - converting terminal at depth {i} to branch would create children at depth {i+1} (guess #{i+3}, exceeds 6 guess limit)"
+                    if verbose:
+                        print(f"  {error_msg}")
+                    raise ValueError(error_msg)
+                
                 # Calculate pattern from terminal word to our answer
                 new_pattern_int = calculate_pattern(child, answer)
                 new_pattern_key = pattern_to_base3(new_pattern_int)
@@ -179,6 +190,15 @@ def add_word_to_tree(tree: Dict, answer: str, verbose: bool = True) -> bool:
     
     # Add missing branch
     missing_step = path[missing_start_idx]
+    
+    # Check if adding at this depth would exceed max depth
+    # Terminal would be guessed as guess #(depth+2)
+    if missing_step['depth'] >= 5:
+        error_msg = f"ERROR: Cannot add '{answer.upper()}' - would require adding at depth {missing_step['depth']} (guess #{missing_step['depth']+2}, exceeds 6 guess limit)"
+        if verbose:
+            print(f"  {error_msg}")
+        raise ValueError(error_msg)
+    
     if verbose:
         print(f"\n  Adding branch at depth {missing_step['depth']}:")
         print(f"    Guess: {missing_step['guess'].upper()}")
@@ -215,12 +235,17 @@ def main():
     print(f"\nProcessing {len(words)} word(s)...")
     
     modified_count = 0
+    error_count = 0
     for word in words:
-        if add_word_to_tree(tree, word, verbose=True):
-            modified_count += 1
+        try:
+            if add_word_to_tree(tree, word, verbose=True):
+                modified_count += 1
+        except ValueError as e:
+            print(f"  {e}")
+            error_count += 1
     
     print(f"\n{'='*60}")
-    print(f"Summary: {modified_count} word(s) added to tree")
+    print(f"Summary: {modified_count} word(s) added to tree, {error_count} error(s)")
     print(f"{'='*60}")
     
     if modified_count > 0:

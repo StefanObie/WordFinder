@@ -7250,12 +7250,7 @@
                   "map": {
                     "22022": "boxer",
                     "02222": "goner",
-                    "02022": {
-                      "guess": "homer",
-                      "map": {
-                        "02022": "gofer"
-                      }
-                    }
+                    "02022": "homer"
                   },
                   "depth": 1,
                   "ranking": {
