@@ -9,7 +9,7 @@ Automatically plays NYT Wordle by:
 
 import os
 import time
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright # type: ignore
 from discord.discord_logger import send_discord_message, MessageType
 
 # Import modules
@@ -21,14 +21,13 @@ from discord.discord_notifier import send_wordle_summary, send_missing_word_erro
 MAX_ATTEMPTS = 6
 
 # Browser Configuration
-HEADLESS = True                 # Set to True to hide browser window
+HEADLESS = False                 # Set to True to hide browser window
 DELAY_AFTER_GUESS = 3           # Seconds to wait for tile animations
-USE_AUTOMATION_PROFILE = True  # True = use automation profile, False = incognito mode
+USE_AUTOMATION_PROFILE = False  # True = use automation profile, False = incognito mode
 
 WORDLE_URL = "https://www.nytimes.com/games/wordle/index.html"
 AUTOMATION_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Data - Automation"
 # =========================================
-
 
 def solve_wordle(page):
     """
@@ -58,7 +57,7 @@ def solve_wordle(page):
             current_guess = get_next_guess(history)
             print(f"Decision tree suggests: {current_guess.upper()}")
         except WordNotInTreeError as e:
-            print(f"\n⚠️ Word not in decision tree: {e}")
+            print(f"\nWord not in decision tree: {e}")
             print("Stopping game and sending Discord notification...")
             stats['attempts'] = attempt - 1
             send_missing_word_error(None, stats['guesses'])

@@ -19,9 +19,8 @@ A web application for searching and filtering words using regex and keyboard con
 - HTML, CSS, and JavaScript  
 
 ## Self Solver
-### Strategy
-Decision Tree
 
+See [Self Solver README](self_solver/SELF_SOLVER_README.md) for details on the automated Wordle solver that uses Playwright and a Decision Tree solve the Wordle daily.
 
 <!-- ## Getting Started
 
