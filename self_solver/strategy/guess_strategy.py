@@ -77,18 +77,7 @@ def _step(node: Dict, guess: str, pattern_base3: str) -> Dict:
     return child
 
 
-def get_optimal_guess(
-    remaining_candidate_words: List[str],
-    round_num: int = 1,
-    constraints: Optional[Dict] = None,
-    all_words: Optional[List[str]] = None,
-    history: Optional[List[Dict]] = None,
-) -> str:
-    del constraints, all_words, round_num
-
-    if not remaining_candidate_words:
-        raise ValueError("No remaining candidates")
-
+def get_optimal_guess(history: Optional[List[Dict]] = None) -> str:
     node = DECISION_TREE
     if history:
         for entry in history:

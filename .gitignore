@@ -1,8 +1,8 @@
-backend/__pycache__
 backend/nltk_data
 backend/venv
 gunicorn.ctl
 
 self_solver/.env
 self_solver/venv
-self_solver/__pycache__
+
+*__pycache__

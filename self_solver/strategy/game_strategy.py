@@ -32,11 +32,7 @@ def get_next_guess(history: List[Dict]) -> str:
     """
     try:
         # Call the decision tree strategy
-        # Pass empty candidates list since tree doesn't use it
-        guess = get_optimal_guess(
-            remaining_candidate_words=[],
-            history=history
-        )
+        guess = get_optimal_guess(history=history)
         return guess.lower()
     
     except KeyError as e:
