@@ -10,7 +10,7 @@ from collections import defaultdict
 from typing import List, Dict
 
 from guess_strategy import get_optimal_guess
-from wordle_simulator import simulate_game, pattern_to_string
+from wordle_simulator import simulate_game
 
 
 def load_word_bank(sorted: bool = True) -> List[str]:
@@ -23,15 +23,12 @@ def load_word_bank(sorted: bool = True) -> List[str]:
     Returns:
         List of 5-letter words (lowercased)
     """
-    if sorted:
-        csv_path = os.path.join(os.path.dirname(__file__), 'wordle-word-bank-sorted.csv')
-    else:
-        csv_path = os.path.join(os.path.dirname(__file__), 'wordle-word-bank.csv')
-    
-    # Fallback to parent backend folder if not found in current directory
+    del sorted
+
+    csv_path = os.path.join(os.path.dirname(__file__), 'wordle-solution-bank.csv')
+
     if not os.path.exists(csv_path):
-        csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
-                                'backend', 'wordle-word-bank.csv')
+        raise FileNotFoundError(f"Solution bank not found: {csv_path}")
     
     with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
@@ -161,27 +158,14 @@ def suggest_guess(remaining_candidate_words: List[str]) -> Dict:
     Returns:
         Dictionary with guess and scoring information
     """
-    from guess_strategy import (
-        calculate_entropy,
-        calculate_minimax_score,
-        calculate_expected_remaining
-    )
-    
     if not remaining_candidate_words:
         raise ValueError("No remaining candidates")
     
     optimal = get_optimal_guess(remaining_candidate_words)
-    
-    # Calculate scores
-    entropy = calculate_entropy(optimal, remaining_candidate_words)
-    minimax = calculate_minimax_score(optimal, remaining_candidate_words)
-    expected = calculate_expected_remaining(optimal, remaining_candidate_words)
-    
+
     return {
         'guess': optimal,
-        'entropy': entropy,
-        'worst_case': minimax,
-        'expected_remaining': expected
+        'remaining_candidates': len(remaining_candidate_words)
     }
 
 
@@ -206,16 +190,23 @@ def test_player(num_tests: int = 100, verbose: bool = False) -> Dict:
     player = WordlePlayer(word_bank)
     
     print(f"\nStarting {len(test_words)} games...")
-    stats = player.play_batch(test_words, max_attempts=12, verbose=verbose)
-    
-    # Print progress
-    if not verbose:
-        for i, word in enumerate(test_words, 1):
-            if i % 10 == 0:
-                print(f"Progress: {i}/{len(test_words)}")
+    stats = player.play_batch(test_words, max_attempts=6, verbose=verbose)
+
+    failed_games = [game for game in stats['games'] if not game.get('solved')]
+    if failed_games:
+        print("\nFailed words for investigation:")
+        for game in failed_games:
+            answer = game.get('answer', '<unknown>').upper()
+            trail_parts = []
+            for entry in game.get('guesses', []):
+                guess = entry.get('guess', '?????').upper()
+                pattern = entry.get('pattern', -1)
+                trail_parts.append(f"{guess}:{pattern}")
+            trail = " -> ".join(trail_parts) if trail_parts else "<no guesses recorded>"
+            print(f"  - {answer} | {trail}")
     
     WordlePlayer.print_stats(stats)
     return stats
 
 if __name__ == "__main__":
-    test_player(num_tests=100, verbose=False)
+    test_player(num_tests=10000, verbose=False)

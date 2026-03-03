@@ -3,9 +3,9 @@ import os
 import sys
 from typing import Dict, List, Optional
 
-from pattern_utils import pattern_to_base3
+from .pattern_utils import pattern_to_base3
 
-TREE_FILE = os.path.join(os.path.dirname(__file__), "salet.tree.hard.json")
+TREE_FILE = os.path.join(os.path.dirname(__file__), "..", "preprocessing", "salet.tree.hard.json")
 
 
 def _load_tree_or_exit() -> Dict:
