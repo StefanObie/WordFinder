@@ -1,17 +1,17 @@
-# Wordle Self-Solver (Playwright)
+# Wordle Self-Solver (Decision Tree)
 
-Automatically plays the NYT Wordle puzzle using Playwright browser automation and intelligent word filtering.
+Automatically plays the NYT Wordle puzzle using a pre-computed decision tree for optimal play with Playwright browser automation.
 
 ## Features
 
-- ✅ Loads pre-sorted Wordle word bank (by frequency and alphabetically)
-- ✅ Configurable starting word
+- ✅ Uses pre-computed decision tree for mathematically optimal guessing strategy
+- ✅ Always starts with "SALET" (tree root - statistically optimal first guess)
 - ✅ Automated browser interaction with NYT Wordle using Playwright
 - ✅ Two modes: Automation profile OR incognito mode
 - ✅ Real-time feedback scraping from the page
-- ✅ Smart candidate filtering based on green/yellow/gray tiles
-- ✅ Displays progress (guesses, attempts, remaining candidates)
-- ✅ Email summary via ZeptoMail with detailed stats
+- ✅ Base3 pattern format throughout processing ("21010" for decision tree navigation)
+- ✅ Displays progress (guesses, patterns)
+- ✅ Discord notifications for game summary and errors
 
 ## Installation
 
@@ -27,21 +27,14 @@ playwright install msedge
 
 3. Make sure you have Microsoft Edge installed on your system
 
-4. **Create pre-sorted word bank** (required):
-```bash
-python sort_wordbank_once.py
-```
+4. The decision tree (`salet.tree.hard.json`) is already included - no additional setup needed
 
-This creates `wordle-word-bank-sorted.csv` with words sorted by frequency (most common first), then alphabetically. This only needs to be run once.
-
-5. **(Optional) Email Configuration**: To receive summary emails via ZeptoMail:
-   - Copy `.env.example` to `.env`
-   - Get your ZeptoMail API token from https://www.zoho.com/zeptomail/
-   - Edit `.env` and add your credentials:
+5. **(Optional) Discord Configuration**: To receive game summaries and error notifications:
+   - Create a `.env` file in the self_solver directory
+   - Add your Discord webhook URL:
    ```
-   ZEPTOMAIL_TOKEN=your_api_token_here
-   EMAIL_FROM=noreply@yourdomain.com
-   EMAIL_TO=your.email@example.com
+   DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_URL
+   DISCORD_USERNAME=Wordle Solver
    ```
 
 ## Usage
@@ -55,12 +48,12 @@ python self_solve.py
 ```
 
 The script will:
-1. Open Edge browser with your Profile 3
+1. Open browser (automation profile or incognito)
 2. Navigate to NYT Wordle
 3. Close any popups/modals
-4. Automatically play the puzzle
-5. Display progress in the terminal
-6. Show the solution when found
+4. Automatically play the puzzle using the decision tree
+5. Display progress in the terminal with base3 patterns
+6. Show the solution when found (or error if word not in tree)
 
 ### Configuration
 
@@ -68,15 +61,16 @@ Edit the configuration section at the top of `self_solve.py`:
 
 ```python
 # Configuration Options
-STARTING_WORD = "stair"  # Set to a specific word (e.g., "soare") or None to use first from sorted list
 WORDLE_URL = "https://www.nytimes.com/games/wordle/index.html"
-HEADLESS = False  # Set to True to hide the browser window
+HEADLESS = True  # Set to True to hide the browser window
 DELAY_AFTER_GUESS = 3  # Seconds to wait for animations (increase if tiles don't load in time)
 
 # Browser Profile Configuration
-USE_AUTOMATION_PROFILE = False  # True = use dedicated automation profile, False = incognito mode
+USE_AUTOMATION_PROFILE = True  # True = use dedicated automation profile, False = incognito mode
 AUTOMATION_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Data - Automation"
 ```
+
+Note: Starting word is always "SALET" (decision tree root) and cannot be configured.
 
 **Profile Modes:**
 - **Incognito Mode** (`USE_AUTOMATION_PROFILE = False`): Clean temporary session, no login required
@@ -89,85 +83,135 @@ AUTOMATION_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Dat
 
 ```
 ==================================================
-WORDLE SELF-SOLVER (Playwright)
+WORDLE SELF-SOLVER (Decision Tree)
 ==================================================
 
-Loading word bank...
-Loaded 12972 pre-sorted words from word bank
-
 Initializing browser...
-Using incognito mode (no profile)
+Using persistent Chromium profile (Raspberry Pi)
 
 Navigating to https://www.nytimes.com/games/wordle/index.html...
-Waiting for page to load...
 ✓ Clicked Play button
 ✓ Closed modal
 
 ==================================================
-Starting word: STAIR
-Total candidates: 12972
+Using decision tree strategy
+First guess: SALET (tree root)
 ==================================================
 
 --- Attempt 1 ---
-Guessing: STAIR
-Candidates remaining: 12972
-Submitted guess: STAIR
-Feedback: 🟩⬜🟨⬜🟩
+Decision tree suggests: SALET
+Submitted guess: SALET
+Pattern: 10012
 
 --- Attempt 2 ---
-Guessing: SHALE
-Candidates remaining: 47
-Submitted guess: SHALE
-Feedback: 🟩🟩🟩⬜🟩
-Remaining candidates: SHAKE, SHAVE, SHADE
+Decision tree suggests: CREST
+Submitted guess: CREST
+Pattern: 00221
 
 --- Attempt 3 ---
-Guessing: SHAKE
-Candidates remaining: 3
-Submitted guess: SHAKE
-Feedback: 🟩🟩🟩🟩🟩
+Decision tree suggests: GUEST
+Submitted guess: GUEST
+Pattern: 22222
 
 ==================================================
 ✅ Solved in 3 attempt(s)!
-Answer: SHAKE
+Answer: GUEST
 ==================================================
 
 🎉 Successfully solved today's Wordle!
 
-Sending email summary...
-✅ Email summary sent successfully
+Sending Discord summary...
 
 Keeping browser open for 3 seconds...
 ```
 
 ## How It Works
 
-1. **Word Bank Loading**: Loads all valid Wordle words from `wordle-word-bank-sorted.csv` (pre-sorted by frequency and alphabetically)
+1. **Decision Tree Navigation**: Uses a pre-computed decision tree (`salet.tree.hard.json`) built from optimal Wordle solving strategies:
+   - Tree starts with "SALET" as the mathematically optimal first guess
+   - Each node contains the best next guess based on previous patterns
+   - Tree was pre-computed for ~2,300 common Wordle answers
 
 2. **Browser Automation**: Uses Playwright to:
-   - Open Edge browser (incognito or automation profile)
+   - Open browser (Chromium/Edge, incognito or automation profile)
    - Navigate to NYT Wordle
    - Click Play button and close modals
    - Type guesses letter by letter
    - Submit with Enter key
 
-3. **Feedback Scraping**: Parses the DOM to extract:
-   - `data-state="correct"` → 🟩 Green (correct letter, correct position)
-   - `data-state="present"` → 🟨 Yellow (correct letter, wrong position)
-   - `data-state="absent"` → ⬜ Gray (letter not in word)
+3. **Feedback Scraping** (`scraper.py`): Parses the DOM to extract:
+   - `data-state="correct"` → state 'correct' (green tile)
+   - `data-state="present"` → state 'present' (yellow tile)
+   - `data-state="absent"` → state 'absent' (gray tile)
+   - Converts to base3 pattern: "21010" where 2=correct, 1=present, 0=absent
 
-4. **Candidate Filtering**: After each guess, filters the word list by:
-   - **Green constraints**: Letter must be in that exact position
-   - **Yellow constraints**: Letter must be in word but not in that position
-   - **Gray constraints**: Letter must not be in word (unless already green/yellow)
+4. **Pattern-Based Navigation** (`game_strategy.py`):
+   - Maintains history of guesses with base3 patterns
+   - Navigates decision tree using pattern keys
+   - Each pattern leads to the next optimal guess
+   - If tree path doesn't exist → raises `WordNotInTreeError`
 
-5. **Next Guess Selection**: Picks the first word from the filtered candidates (already sorted optimally)
+5. **Error Handling**: When answer is not in tree:
+   - Stops the game immediately
+   - Sends Discord error notification with guess history
+   - Provides instructions to add word to tree using preprocessing tools
 
-6. **Email Summary**: Sends a ZeptoMail summary with:
+6. **Discord Notifications** (`discord_notifier.py`): Sends summaries with:
    - Solved status and number of attempts
-   - Each guess with visual feedback (🟩🟨⬜)
-   - Remaining candidates before each guess
+   - Each guess with visual emoji feedback (🟩🟨⬜)
+   - Base3 patterns for debugging
    - Final answer if solved
+
+## Module Architecture
+
+The codebase is organized into separate modules with single responsibilities:
+
+- **`self_solve.py`**: Main coordinator - browser setup, game loop
+- **`scraper.py`**: Browser interaction - clicking, typing, scraping feedback
+- **`strategy/`**: Decision tree strategy modules
+  - **`game_strategy.py`**: High-level strategy - gets next guess from tree
+  - **`guess_strategy.py`**: Core tree logic - loads and traverses tree
+  - **`pattern_utils.py`**: Pattern conversion - base3 calculations
+- **`discord/`**: Discord messaging modules
+  - **`discord_notifier.py`**: High-level messaging - formats game summaries and errors (only place emojis are used)
+  - **`discord_logger.py`**: Low-level Discord API - webhook integration
+- **`preprocessing/`**: Tools for maintaining the decision tree
+  - **`add_words_to_tree.py`**: Script to add missing words to the tree
+  - **`salet.tree.hard.json`**: Pre-computed decision tree (10,560 lines)
+  - **`sort_wordbank_once.py`**: Legacy word bank sorting script
+  - **`wordle-word-bank-sorted.csv`**: Legacy sorted word list
+
+## Preprocessing Tools
+
+If a word is not in the decision tree, you can add it manually:
+
+```bash
+cd self_solver
+python -m preprocessing.add_words_to_tree WORDHERE
+```
+
+This will:
+1. Trace the optimal path for the word through simulated guesses
+2. Add missing branches to the tree
+3. Create a backup before modifying
+4. Save the updated tree
+
+The tree file is located at `preprocessing/salet.tree.hard.json` (10,560 lines, ~350KB).
+
+## Limitations
+
+⚠️ **Important**: The decision tree does NOT contain all possible 5-letter words.
+
+- Tree was built from ~2,300 words in the Wordle solution bank
+- NYT occasionally uses words not in the original solution set
+- When an unknown word is encountered:
+  - Game stops immediately
+  - Discord error message sent with failure details
+  - You must manually add the word using preprocessing tools
+  - Re-run for the next day's puzzle
+
+- If you want better coverage, you can pre-emptively add common words to the tree
+- The solver is optimized for speed and known Wordle solutions, not all English words
 
 ## Troubleshooting
 
@@ -180,11 +224,11 @@ Keeping browser open for 3 seconds...
 - Install dependencies: `pip install -r requirements.txt`
 - Then install browsers: `playwright install msedge`
 
-### Email not sending
-- Ensure `.env` file exists with valid ZeptoMail credentials
-- Install email dependencies: `pip install requests python-dotenv`
-- Check ZeptoMail API token is valid
-- Verify EMAIL_FROM domain is configured in ZeptoMail
+### Discord not sending
+- Ensure `.env` file exists with valid Discord webhook URL
+- Install dependencies: `pip install requests python-dotenv`
+- Check webhook URL is valid and not expired
+- Verify you have permission to post to the Discord channel
 
 ### Can't close modals
 - Increase delay times in the code
@@ -213,8 +257,10 @@ Playwright offers several advantages over Selenium:
 
 - The script plays only **today's Wordle** puzzle
 - You can only play once per day (NYT limitation)
-- First word is configurable - popular choices: "soare", "roate", "raise", "arise", "stair"
-- The word bank contains 12,972+ valid 5-letter words
+- First word is always "SALET" (decision tree root - non-configurable)
+- Decision tree contains ~2,300 Wordle solution paths
+- Base3 pattern format used throughout: "21010" (2=green, 1=yellow, 0=gray)
+- Emojis (🟩🟨⬜) only used in Discord messages, not in processing logic
 
 ## License
 

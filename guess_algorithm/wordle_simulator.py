@@ -4,7 +4,7 @@ Handles the mechanics of the Wordle game - pattern calculation, game simulation,
 """
 
 from typing import Dict, List, Callable
-from guess_strategy import calculate_pattern
+from pattern_utils import SOLVED_PATTERN, calculate_pattern, pattern_to_base3
 
 
 def pattern_to_string(pattern: int) -> str:
@@ -127,20 +127,22 @@ def simulate_game(
             remaining_candidate_words=candidates,
             round_num=attempt,
             constraints=constraints if attempt > 1 else None,
-            all_words=all_words
+            all_words=all_words,
+            history=guesses
         )
         
         # Calculate pattern
         pattern = calculate_pattern(guess, answer)
+        pattern_base3 = pattern_to_base3(pattern)
         
         if verbose:
             visual = pattern_to_string(pattern)
             print(f"Round {attempt}: {guess.upper()} {visual} ({len(candidates)} candidates)")
         
-        guesses.append({'guess': guess, 'pattern': pattern})
+        guesses.append({'guess': guess, 'pattern': pattern, 'pattern_base3': pattern_base3})
         
-        # Check if solved (all greens: 2+2*3+2*9+2*27+2*81 = 242)
-        if pattern == 242:
+        # Check if solved
+        if pattern == SOLVED_PATTERN:
             if verbose:
                 print(f"✅ Solved in {attempt} guesses!")
             return {

@@ -1,22 +1,23 @@
 """
 Wordle Self-Solver Script
 Automatically plays NYT Wordle by:
-1. Loading sorted word bank (frequency + alphabetical)
-2. Making strategic guesses
-3. Scraping feedback from the page
-4. Filtering candidates based on constraints
-5. Repeating until solved
+1. Using pre-computed decision tree for optimal guesses
+2. Scraping feedback from the page
+3. Navigating the decision tree based on patterns
+4. Repeating until solved or tree path not found
 """
 
 import os
-import csv
 import time
-from datetime import datetime
 from playwright.sync_api import sync_playwright
-from discord_logger import send_discord_message, MessageType
+from discord.discord_logger import send_discord_message, MessageType
+
+# Import modules
+from scraper import click_play_button, close_modals, submit_guess, get_feedback, feedback_to_base3
+from strategy.game_strategy import get_next_guess, WordNotInTreeError
+from discord.discord_notifier import send_wordle_summary, send_missing_word_error
 
 # ============= CONFIGURATION =============
-STARTING_WORD = "stair"         # None = use first word from sorted list, or set manually.
 MAX_ATTEMPTS = 6
 
 # Browser Configuration
@@ -28,221 +29,17 @@ WORDLE_URL = "https://www.nytimes.com/games/wordle/index.html"
 AUTOMATION_PROFILE_PATH = r"C:\Users\steff\AppData\Local\Microsoft\Edge\User Data - Automation"
 # =========================================
 
-def load_word_bank():
-    """Load pre-sorted word bank (already sorted by frequency, then alphabetically)."""
-    sorted_csv_path = os.path.join(os.path.dirname(__file__), 'wordle-word-bank-sorted.csv')
-    
-    with open(sorted_csv_path, 'r', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        words = [row[0].lower().strip() for row in reader if row and row[0].strip()]
-    
-    print(f"Loaded {len(words)} pre-sorted words from word bank")
-    return words
 
-def click_play_button(page):
-    """Click the Play button on the landing page if present."""
-    try:
-        print("Looking for Play button...")
-        # Wait for Play button and click it
-        play_button = page.locator("button[data-testid='Play']")
-        if play_button.is_visible(timeout=5000):
-            # Use click with no_wait_after to prevent page navigation issues
-            play_button.click(no_wait_after=False)
-            print("Clicked Play button")
-            # Wait for navigation to complete
-            page.wait_for_load_state("networkidle")
-            time.sleep(0.5)
-            return True
-    except Exception as e:
-        print(f"Play button not found (may already be on game page): {e}")
-    return False
-
-def close_modals(page):
-    """Close any popups/modals that might appear."""
-    try:
-        time.sleep(0.5)
-        
-        # Try multiple close button selectors
-        close_selectors = [
-            "button[aria-label='Close']",
-            "button.Modal-module_closeIcon__TcEKb",
-            "svg[data-testid='icon-close']"
-        ]
-        
-        for selector in close_selectors:
-            try:
-                close_buttons = page.locator(selector).all()
-                for button in close_buttons:
-                    if button.is_visible():
-                        button.click()
-                        print("Closed modal")
-                        time.sleep(0.2)
-            except:
-                pass
-        
-        # Click game area to dismiss overlays
-        try:
-            page.locator("body").click()
-        except:
-            pass
-            
-    except Exception as e:
-        print(f"Note: Could not close modals: {e}")
-
-def submit_guess(page, word):
-    """Type a word and submit it."""
-    try:
-        # Type each letter
-        for letter in word.upper():
-            page.keyboard.press(letter)
-            time.sleep(0.1)
-        
-        # Press Enter
-        page.keyboard.press("Enter")
-        print(f"Submitted guess: {word.upper()}")
-        
-        # Wait for animations
-        time.sleep(DELAY_AFTER_GUESS)
-        
-    except Exception as e:
-        print(f"Error submitting guess: {e}")
-        raise
-
-def get_feedback(page, row_number):
+def solve_wordle(page):
     """
-    Scrape feedback from the specified row.
-    Returns list of tuples: [(letter, state), ...]
-    where state is 'correct', 'present', or 'absent'
+    Main solving loop using decision tree strategy.
+    Returns stats dictionary.
     """
-    try:
-        # Find all rows
-        rows = page.locator("div[role='group'][aria-label^='Row']").all()
-        
-        if row_number > len(rows):
-            raise Exception(f"Row {row_number} not found")
-        
-        current_row = rows[row_number - 1]
-        
-        # Find all tiles in this row
-        tiles = current_row.locator("div[data-state]").all()
-        
-        feedback = []
-        for tile in tiles:
-            state = tile.get_attribute("data-state")
-            aria_label = tile.get_attribute("aria-label")
-            
-            # Extract letter from aria-label (e.g., "1st letter, S, correct")
-            letter = None
-            if aria_label:
-                parts = aria_label.split(',')
-                if len(parts) >= 2:
-                    letter = parts[1].strip().lower()
-            
-            if letter and state in ['correct', 'present', 'absent']:
-                feedback.append((letter, state))
-        
-        return feedback
-        
-    except Exception as e:
-        print(f"Error getting feedback: {e}")
-        return []
-
-def display_feedback(feedback):
-    """Display feedback with emoji visualization."""
-    visual = ""
-    for letter, state in feedback:
-        if state == 'correct':
-            visual += "🟩"
-        elif state == 'present':
-            visual += "🟨"
-        else:
-            visual += "⬜"
-    return visual
-
-def filter_candidates(candidates, guess, feedback):
-    """
-    Filter word list based on feedback from the guess.
-    Returns filtered list of candidates.
-    """
-    # Build constraints
-    green_positions = {}  # position -> letter
-    yellow_letters = {}  # letter -> set of positions it's NOT in
-    gray_letters = set()
-    
-    # Track letter counts in guess for multi-letter handling
-    letter_counts = {}
-    for i, (letter, state) in enumerate(feedback):
-        if state in ['correct', 'present']:
-            letter_counts[letter] = letter_counts.get(letter, 0) + 1
-    
-    # Process feedback
-    for i, (letter, state) in enumerate(feedback):
-        if state == 'correct':
-            green_positions[i] = letter
-        elif state == 'present':
-            if letter not in yellow_letters:
-                yellow_letters[letter] = set()
-            yellow_letters[letter].add(i)
-        elif state == 'absent':
-            # Only mark as gray if this letter doesn't appear as green/yellow elsewhere
-            if letter not in letter_counts:
-                gray_letters.add(letter)
-    
-    # Filter candidates
-    filtered = []
-    for word in candidates:
-        # Check green positions
-        valid = True
-        for pos, letter in green_positions.items():
-            if word[pos] != letter:
-                valid = False
-                break
-        
-        if not valid:
-            continue
-        
-        # Check yellow letters (must be in word, but not in excluded positions)
-        for letter, excluded_positions in yellow_letters.items():
-            if letter not in word:
-                valid = False
-                break
-            # Check it's not in the excluded positions
-            for pos in excluded_positions:
-                if word[pos] == letter:
-                    valid = False
-                    break
-            if not valid:
-                break
-        
-        if not valid:
-            continue
-        
-        # Check gray letters
-        for letter in gray_letters:
-            if letter in word:
-                valid = False
-                break
-        
-        if not valid:
-            continue
-        
-        filtered.append(word)
-    
-    return filtered
-
-def solve_wordle(page, word_bank):
-    """Main solving loop. Returns stats dictionary."""
-    candidates = word_bank.copy()
-    
-    # Determine starting word
-    if STARTING_WORD:
-        first_guess = STARTING_WORD.lower()
-    else:
-        first_guess = candidates[0] if candidates else "soare"
+    history = []
     
     print(f"\n{'='*50}")
-    print(f"Starting word: {first_guess.upper()}")
-    print(f"Total candidates: {len(candidates)}")
+    print("Using decision tree strategy")
+    print("First guess: SALET (tree root)")
     print(f"{'='*50}\n")
     
     # Track stats for feedback
@@ -250,29 +47,29 @@ def solve_wordle(page, word_bank):
         'solved': False,
         'attempts': 0,
         'answer': None,
-        'guesses': []  # List of {'guess': str, 'feedback': list, 'remaining': int, 'visual': str}
+        'guesses': []
     }
     
     for attempt in range(1, MAX_ATTEMPTS + 1):
         print(f"\n--- Attempt {attempt} ---")
         
-        # Choose next guess
-        if attempt == 1:
-            current_guess = first_guess
-        else:
-            if not candidates:
-                print("No valid candidates remaining!")
-                return stats
-            current_guess = candidates[0]
-        
-        print(f"Guessing: {current_guess.upper()}")
-        print(f"Candidates remaining: {len(candidates)}")
+        # Get next guess from decision tree
+        try:
+            current_guess = get_next_guess(history)
+            print(f"Decision tree suggests: {current_guess.upper()}")
+        except WordNotInTreeError as e:
+            print(f"\n⚠️ Word not in decision tree: {e}")
+            print("Stopping game and sending Discord notification...")
+            stats['attempts'] = attempt - 1
+            send_missing_word_error(None, stats['guesses'])
+            return stats
         
         # Submit guess
         try:
-            submit_guess(page, current_guess)
+            submit_guess(page, current_guess, DELAY_AFTER_GUESS)
         except Exception as e:
             print(f"Failed to submit guess: {e}")
+            stats['attempts'] = attempt
             return stats
         
         # Get feedback
@@ -280,80 +77,49 @@ def solve_wordle(page, word_bank):
         
         if not feedback:
             print("Could not read feedback from page")
+            stats['attempts'] = attempt
             return stats
         
-        # Display feedback
-        visual = display_feedback(feedback)
-        print(f"Feedback: {visual}")
+        # Convert to base3 pattern for decision tree
+        pattern_base3 = feedback_to_base3(feedback)
+        print(f"Pattern: {pattern_base3}")
         
         # Track this guess
-        stats['attempts'] = attempt
         stats['guesses'].append({
-            'guess': current_guess.upper(),
+            'guess': current_guess,
             'feedback': feedback,
-            'visual': visual,
-            'remaining_before': len(candidates)
+            'pattern_base3': pattern_base3
         })
         
-        # Check if solved
-        if all(state == 'correct' for _, state in feedback):
+        # Check if solved (pattern is all 2s = all correct)
+        if pattern_base3 == "22222":
             print(f"\n{'='*50}")
-            print(f"Solved in {attempt} attempt(s)!")
+            print(f"✅ Solved in {attempt} attempt(s)!")
             print(f"Answer: {current_guess.upper()}")
             print(f"{'='*50}")
             stats['solved'] = True
-            stats['answer'] = current_guess.upper()
+            stats['attempts'] = attempt
+            stats['answer'] = current_guess
             return stats
         
-        # Filter candidates for next round
-        candidates = filter_candidates(candidates, current_guess, feedback)
-        
-        # Show remaining top candidates
-        if candidates and len(candidates) <= 10:
-            print(f"Remaining candidates: {', '.join(c.upper() for c in candidates[:10])}")
+        # Add to history for next iteration
+        history.append({
+            'guess': current_guess,
+            'pattern_base3': pattern_base3
+        })
     
     print(f"\n{'='*50}")
     print("Failed to solve within 6 attempts")
     print(f"{'='*50}")
+    stats['attempts'] = MAX_ATTEMPTS
     return stats
 
-def send_wordle_summary(stats):
-    """Send Wordle solving summary to Discord webhook using logger."""
-    today = datetime.now().strftime("%B %d, %Y")
-    if stats['solved']:
-        title = f"Wordle Solved - {stats['attempts']}/6 ({today})"
-        status = f"✅ SOLVED in {stats['attempts']} attempts"
-        msg_type = MessageType.SUCCESS
-    else:
-        title = f"Wordle Failed ({today})"
-        status = f"❌ NOT SOLVED after {stats['attempts']} attempts"
-        msg_type = MessageType.ERROR
-
-    # Build Wordle-Style Grid
-    grid_lines = []
-    for g in stats['guesses']:
-        grid_lines.append(g['visual'])
-    grid = '\n'.join(grid_lines)
-
-    # Build guess details
-    guess_details = []
-    for i, g in enumerate(stats['guesses'], 1):
-        guess_details.append(f"Guess {i}: `{g['guess']}`  (Remaining: {g['remaining_before']})")
-
-    answer_line = f"**Answer:** `{stats['answer']}`" if stats['solved'] else ""
-
-    message = f"**{title}**\n\n{status}\n{answer_line}\n\n**Guesses:**\n{grid}\n\n" + '\n'.join(guess_details)
-    send_discord_message(message, msg_type)
 
 def main():
     """Main entry point."""
     print("=" * 50)
-    print("WORDLE SELF-SOLVER")
+    print("WORDLE SELF-SOLVER (Decision Tree)")
     print("=" * 50)
-    
-    # Load word bank
-    print("\nLoading word bank...")
-    word_bank = load_word_bank()
     
     # Setup Playwright
     print("\nInitializing browser...")
@@ -390,7 +156,7 @@ def main():
             close_modals(page)
             
             # Solve the puzzle
-            stats = solve_wordle(page, word_bank)
+            stats = solve_wordle(page)
             
             if stats['solved']:
                 print("\n🎉 Successfully solved today's Wordle!")
@@ -413,6 +179,7 @@ def main():
             traceback.print_exc()
         finally:
             browser.close()
+
 
 if __name__ == "__main__":
     main()

@@ -18,6 +18,10 @@ A web application for searching and filtering words using regex and keyboard con
 ### Static Frontend  
 - HTML, CSS, and JavaScript  
 
+## Self Solver
+### Strategy
+Decision Tree
+
 
 <!-- ## Getting Started
 
