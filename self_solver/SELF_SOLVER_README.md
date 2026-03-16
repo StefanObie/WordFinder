@@ -1,8 +1,14 @@
-# Wordle Self-Solver (Decision Tree)
+# Wordle Self Solver
 
-Automatically plays the NYT Wordle puzzle using a pre-computed decision tree with optimal strategy and Playwright browser automation.
+The solver is now orchestrator-first.
 
-## Run Self-Solver
+- Main orchestration: self_solve.py
+- The Discord send function is called only from self_solve.py
+- Source mode is swappable through one global constant
+- Guesses 1-5 use first matching word from sorted list filters
+- Guess 6 always submits the scraped answer as fail-safe
+
+## Run
 
 ```bash
 source venv/bin/activate
@@ -10,58 +16,43 @@ cd self_solver
 python self_solve.py
 ```
 
-The solver will:
-1. Open Microsoft Edge browser
-2. Navigate to NYT Wordle
-3. Play the puzzle automatically using the decision tree
-4. Send Discord notification with results (optional)
+## Source Switch
 
-## How It Works: Decision Tree
+Edit constants in self_solve.py:
 
-The solver uses a pre-computed decision tree (`salet.tree.hard.json`) for mathematically optimal play:
+- SOURCE_MODE = "nyt" for live NYT scraping
+- SOURCE_MODE = "mock" for in-process testing
 
-- **Starts with SALET**: Always the first guess (root of tree, statistically optimal)
-- **Base3 Patterns**: After each guess, feedback is converted to base3:
-  - `2` = correct (green tile)
-  - `1` = present (yellow tile)
-  - `0` = absent (gray tile)
-  - Example: `"21010"` means [green, yellow, absent, yellow, absent]
-- **Tree Navigation**: Each pattern points to the next optimal guess
-  - The tree contains ~2,300 Wordle solution paths
-  - Each guess eliminates the most possible answers
-  - This guarantees solving in ≤6 attempts
+NYT scraper name used in notifications is scrape_nyt.
 
-## Adding Words to the Tree
+## Runtime Flow
 
-If the solver encounters a word not in the tree, add it manually:
+1. Scrape answer first.
+2. If answer cannot be scraped:
+   - send Discord notification
+   - exit script immediately
+3. Ensure answer exists in preprocessing/wordle-word-bank-sorted.csv.
+4. If answer was added to the sorted list, send Discord notification.
+5. Attempts 1-5:
+   - choose first word in sorted list matching all feedback constraints.
+6. Attempt 6:
+   - always enter scraped answer.
+   - notify that the answer was entered.
 
-```bash
-cd self_solver
-python -m preprocessing.add_words_to_tree WORDHERE
-```
+## Mock Mode
 
-This will:
-1. Simulate optimal play for that word
-2. Add missing branches to the tree
-3. Backup the tree before modifying
-4. Save the updated tree to `preprocessing/salet.tree.hard.json`
+Mock mode is in-process and picks a random answer from the sorted list by default.
 
-## Discord Notifications
+Optional constants in self_solve.py:
 
-To receive game summaries and error alerts:
+- MOCK_SEED for deterministic random choice
+- MOCK_FORCED_ANSWER to force a specific answer
 
-1. Create `.env` file in `self_solver/`:
-```
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_URL
+## Discord Setup
+
+Create self_solver/.env:
+
+```env
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 DISCORD_USERNAME=Wordle Solver
 ```
-
-2. The solver will send:
-   - ✅ Success notification with attempt count and answer
-   - ❌ Error notification if word is not in tree
-   - 🟩🟨⬜ Visual feedback for each guess
-   - Base3 patterns for debugging
-
-## License
-
-Educational purposes only.

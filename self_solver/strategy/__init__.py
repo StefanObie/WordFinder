@@ -1,3 +1,3 @@
 """
-Decision tree strategy modules for Wordle solving.
+Word filtering strategy modules for Wordle solving.
 """
