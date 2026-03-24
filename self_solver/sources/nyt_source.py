@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import time
 from datetime import datetime
+import logging
 from typing import Optional
 
 import requests
@@ -18,18 +19,22 @@ class NytWordleSource(WordleSource):
 
     @staticmethod
     def _log(message: str) -> None:
-        print(f"[DEBUG][nyt_source] {message}")
+        logging.getLogger("self_solver").debug(f"[nyt_source] {message}")
 
     def __init__(
         self,
         headless: bool = True,
         delay_after_guess: float = 3.0,
+        feedback_timeout: float = 8.0,
+        feedback_poll_interval: float = 0.2,
         browser_mode: str = "persistent",
         chromium_user_data_dir: str = "~/.config/chromium",
         wordle_url: str = "https://www.nytimes.com/games/wordle/index.html",
     ):
         self.headless = headless
         self.delay_after_guess = delay_after_guess
+        self.feedback_timeout = feedback_timeout
+        self.feedback_poll_interval = feedback_poll_interval
         self.browser_mode = browser_mode.strip().lower()
         self.chromium_user_data_dir = chromium_user_data_dir
         self.wordle_url = wordle_url
@@ -134,7 +139,7 @@ class NytWordleSource(WordleSource):
         self.page.keyboard.press("Enter")
         time.sleep(self.delay_after_guess)
 
-        return self._get_feedback(self.attempt)
+        return self._wait_for_feedback(self.attempt)
 
     def close(self) -> None:
         self._log("Closing NYT source resources")
@@ -183,24 +188,34 @@ class NytWordleSource(WordleSource):
         if not self.page:
             return []
         try:
-            rows = self.page.locator("div[role='group'][aria-label^='Row']").all()
-            if row_number > len(rows):
-                return []
+            row_label = f"Row {row_number}"
+            current_row = self.page.locator(f"div[role='group'][aria-label='{row_label}']")
+            if current_row.count() == 0:
+                rows = self.page.locator("div[role='group'][aria-label^='Row']").all()
+                if row_number > len(rows):
+                    return []
+                row = rows[row_number - 1]
+            else:
+                row = current_row.first
 
-            current_row = rows[row_number - 1]
-            tiles = current_row.locator("div[data-state]").all()
+            tiles = row.locator("div[data-state]").all()
 
             feedback: Feedback = []
             for tile in tiles:
                 state = tile.get_attribute("data-state")
-                aria_label = tile.get_attribute("aria-label")
-                if not aria_label or state not in {"correct", "present", "absent"}:
+                if state not in {"correct", "present", "absent"}:
                     continue
 
-                parts = aria_label.split(",")
-                if len(parts) < 2:
+                letter = (tile.text_content() or "").strip().lower()
+                if not letter:
+                    aria_label = tile.get_attribute("aria-label") or ""
+                    parts = [part.strip().lower() for part in aria_label.split(",") if part.strip()]
+                    if parts:
+                        letter = parts[0][:1]
+
+                if not letter:
                     continue
-                letter = parts[1].strip().lower()
+
                 feedback.append((letter, state))
 
             self._log(f"Row {row_number} feedback captured ({len(feedback)} tiles)")
@@ -208,6 +223,24 @@ class NytWordleSource(WordleSource):
         except Exception:
             self._log(f"Failed to scrape feedback for row {row_number}")
             return []
+
+    def _wait_for_feedback(self, row_number: int) -> Feedback:
+        deadline = time.time() + self.feedback_timeout
+        best_feedback: Feedback = []
+
+        while time.time() < deadline:
+            feedback = self._get_feedback(row_number)
+            if len(feedback) == 5:
+                return feedback
+            if len(feedback) > len(best_feedback):
+                best_feedback = feedback
+            time.sleep(self.feedback_poll_interval)
+
+        self._log(
+            f"Timed out waiting for full row feedback on row {row_number}; "
+            f"best length was {len(best_feedback)}"
+        )
+        return best_feedback
 
     @staticmethod
     def _exists(path: str) -> bool:

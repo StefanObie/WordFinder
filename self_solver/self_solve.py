@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -14,9 +15,11 @@ from strategy.filter_strategy import first_matching_guess
 SOURCE_MODE = "nyt"  # Options: nyt, mock
 SCRAPER_NAME = "scrape_nyt"
 MAX_ATTEMPTS = 6
-HEADLESS = False
+HEADLESS = True
 DELAY_AFTER_GUESS = 3.0
 DEBUG_LOGS = True
+LOG_DIR = Path(__file__).resolve().parent / "logs"
+LOG_FILE = LOG_DIR / "self_solver.log"
 
 # NYT browser settings
 BROWSER_MODE = "persistent"  # Options: persistent, incognito
@@ -32,9 +35,31 @@ WORD_BANK_PATH = Path(__file__).resolve().parent / "preprocessing" / "wordle-wor
 Feedback = List[Tuple[str, str]]
 
 
+def configure_logging() -> None:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger("self_solver")
+    logger.setLevel(logging.DEBUG if DEBUG_LOGS else logging.INFO)
+
+    if logger.handlers:
+        return
+
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.DEBUG if DEBUG_LOGS else logging.INFO)
+    stream_handler.setFormatter(formatter)
+
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+    logger.propagate = False
+
+
 def debug_log(message: str) -> None:
     if DEBUG_LOGS:
-        print(f"[DEBUG] {message}")
+        logging.getLogger("self_solver").debug(message)
 
 
 def load_sorted_word_list(path: Path) -> List[str]:
@@ -100,7 +125,9 @@ def build_summary_message(stats: Dict) -> str:
 
 
 def solve_game() -> int:
+    configure_logging()
     debug_log("Starting solver orchestration")
+    debug_log(f"Writing logs to: {LOG_FILE}")
     debug_log(
         f"Configuration: source_mode={SOURCE_MODE}, max_attempts={MAX_ATTEMPTS}, "
         f"headless={HEADLESS}, delay_after_guess={DELAY_AFTER_GUESS}, browser_mode={BROWSER_MODE}"
@@ -186,9 +213,15 @@ def solve_game() -> int:
             debug_log(f"Submitting guess {guess.upper()}")
             feedback = source.submit_guess(guess)
             if len(feedback) != 5:
-                debug_log(f"Invalid feedback length ({len(feedback)}), sending Discord error")
+                debug_log(
+                    f"Invalid feedback length ({len(feedback)}) for guess {guess.upper()} on attempt {attempt}"
+                )
                 send_discord_message(
-                    f"Invalid feedback length for guess `{guess.upper()}`. Solver stopped.",
+                    (
+                        f"Invalid feedback length ({len(feedback)}/5) for guess `{guess.upper()}` "
+                        f"on attempt {attempt}. Solver stopped. "
+                        f"Check log file: `{LOG_FILE}`"
+                    ),
                     MessageType.ERROR,
                 )
                 stats["attempts"] = attempt
