@@ -1,0 +1,6 @@
+.git
+self_solver
+backend/venv
+backend/nltk_data
+**/__pycache__
+**/.env

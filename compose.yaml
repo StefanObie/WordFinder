@@ -1,0 +1,12 @@
+services:
+  wordfinder:
+    build: .
+    image: wordfinder:local
+    container_name: wordfinder
+    restart: unless-stopped
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
